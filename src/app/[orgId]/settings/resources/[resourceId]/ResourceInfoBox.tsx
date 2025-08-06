@@ -17,6 +17,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { internal } from "@/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useDockerSocket } from "@app/hooks/useDockerSocket";
 import { useTranslations } from "next-intl";
@@ -28,7 +29,9 @@ import { createApiClient } from "@app/lib/api";
 import { build } from "@server/build";
 
 
-type ResourceInfoBoxType = {};
+type ResourceInfoBoxType = {
+    orgs: ResponseOrg[];
+};
 
 type ResponseOrg = {
     orgId: string;
@@ -37,7 +40,7 @@ type ResponseOrg = {
 
 
 
-export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
+export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
     const { resource, authInfo, site } = useResourceContext();
     const api = createApiClient(useEnvContext());
 
@@ -46,32 +49,8 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
 
     let fullUrl = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
 
-    const [availableOrgs, setAvailableOrgs] = useState<{ id: string; name: string }[]>([]);
-    const [selectedOrg, setSelectedOrg] = useState("");
+    const [selectedOrg, setSelectedOrg] = useState<string | undefined>(undefined);
     const [isLoading, setIsLoading] = useState(false);
-
-    useEffect(() => {
-        const fetchOrgs = async () => {
-            try {
-                const res = await fetch("/api/orgs");
-                if (!res.ok) throw new Error("Failed to load orgs");
-                const allOrgs: ResponseOrg[] = await res.json();
-
-                const orgs = allOrgs
-                    .filter((org) => org.orgId !== resource.orgId)
-                    .map((org) => ({
-                        id: org.orgId,
-                        name: org.name
-                    }));
-
-                setAvailableOrgs(orgs);
-            } catch (err) {
-                console.error("Error fetching orgs:", err);
-            }
-        };
-
-        fetchOrgs();
-    }, [resource.orgId]);
 
     const handleMove = async () => {
         if (!selectedOrg) return;
@@ -220,43 +199,43 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
                     </InfoSection>
 
                     <InfoSection>
-                        {/* <InfoSectionTitle>{t("visibility")}</InfoSectionTitle> */}
                         <InfoSectionContent>
-                            {availableOrgs.length > 0 && (
-                                <div className="flex flex-col gap-2">
-                                    <Select
-                                        value={selectedOrg}
-                                        onValueChange={setSelectedOrg}
-                                    >
-                                        <SelectTrigger className="w-full">
-                                            <SelectValue placeholder="Select target organization" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {availableOrgs.map((org) => (
-                                                <SelectItem key={org.id} value={org.id}>
-                                                    {org.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                            <div className="flex flex-col gap-2">
+                                <Select onValueChange={setSelectedOrg}>
+                                    <SelectTrigger className="w-full">
+                                        <SelectValue
+                                            placeholder={
+                                                orgs.length === 0
+                                                    ? "No sites available"
+                                                    : "Select target site"
+                                            }
+                                        />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {orgs.map((org) => (
+                                            <SelectItem key={org.orgId} value={org.orgId}>
+                                                {org.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
 
-                                    <Button
-                                        size="sm"
-                                        onClick={handleMove}
-                                        disabled={!selectedOrg || isLoading}
-                                        variant="default"
-                                    >
-                                        {isLoading ? (
-                                            <>
-                                                <RotateCw className="w-4 h-4 animate-spin mr-2" />
-                                                Moving...
-                                            </>
-                                        ) : (
-                                            "Move Resource"
-                                        )}
-                                    </Button>
-                                </div>
-                            )}
+                                <Button
+                                    size="sm"
+                                    onClick={handleMove}
+                                    disabled={!selectedOrg || isLoading}
+                                    variant="default"
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <RotateCw className="w-4 h-4 animate-spin mr-2" />
+                                            Moving...
+                                        </>
+                                    ) : (
+                                        "Move Resource"
+                                    )}
+                                </Button>
+                            </div>
                         </InfoSectionContent>
                     </InfoSection>
                 </InfoSections>
