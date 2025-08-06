@@ -21,9 +21,7 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
 
     const t = useTranslations();
 
-
     const fullUrl = `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`;
-
 
 
     return (
