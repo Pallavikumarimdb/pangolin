@@ -23,3 +23,4 @@ export * from "./deleteResourceRule";
 export * from "./listResourceRules";
 export * from "./updateResourceRule";
 export * from "./getUserResources";
+export * from "./moveResourceToOrg";

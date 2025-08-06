@@ -349,6 +349,14 @@ authenticated.post(
 );
 
 authenticated.post(
+  `/resource/:resourceId/move-org`,
+  verifyApiKeyResourceAccess,
+  verifyApiKeyHasAction(ActionsEnum.updateResource),
+  resource.moveResourceToOrg
+);
+
+
+authenticated.post(
     `/resource/:resourceId/access-token`,
     verifyApiKeyResourceAccess,
     verifyApiKeyHasAction(ActionsEnum.generateAccessToken),

@@ -471,6 +471,14 @@ authenticated.post(
 );
 
 authenticated.post(
+  `/resource/:resourceId/move-org`,
+  verifyResourceAccess,
+  verifyUserHasAction(ActionsEnum.updateResource),
+  resource.moveResourceToOrg
+);
+
+
+authenticated.post(
     `/resource/:resourceId/access-token`,
     verifyResourceAccess,
     verifyUserHasAction(ActionsEnum.generateAccessToken),
