@@ -12,9 +12,9 @@ import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { GetOrgResponse } from "@server/routers/org";
 import OrgProvider from "@app/providers/OrgProvider";
 import { cache } from "react";
-import ResourceInfoBox from "./ResourceInfoBox";
 import { GetSiteResponse } from "@server/routers/site";
 import { getTranslations } from 'next-intl/server';
+import ResourceInfoWrapper from "./ResourceInfoWrapper";
 
 interface ResourceLayoutProps {
     children: React.ReactNode;
@@ -109,7 +109,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
                     authInfo={authInfo}
                 >
                     <div className="space-y-6">
-                        <ResourceInfoBox />
+                        <ResourceInfoWrapper resource={resource} />
                         <HorizontalTabs items={navItems}>
                             {children}
                         </HorizontalTabs>
