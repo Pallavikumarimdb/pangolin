@@ -35,10 +35,8 @@ import {
     DialogTitle,
     DialogTrigger,
 } from "@/components/ui/dialog";
-import { internal } from "@/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
 import { useTranslations } from "next-intl";
-import { AxiosResponse } from "axios";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
@@ -101,6 +99,7 @@ type MoveWarning = {
 export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
     const { resource, authInfo } = useResourceContext();
     const api = createApiClient(useEnvContext());
+
     const t = useTranslations();
 
     let fullUrl = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;

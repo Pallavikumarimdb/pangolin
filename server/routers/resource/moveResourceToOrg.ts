@@ -1,8 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { resources, orgs, userOrgs, userResources  } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { 
+    resources, 
+    orgs, 
+    userOrgs, 
+    userResources, 
+    roleResources
+} from "@server/db";
+import { eq, and, ne } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -17,7 +23,6 @@ const moveResourceParamsSchema = z.object({
 const moveResourceBodySchema = z.object({
     orgId: z.string().min(1)
 });
-
 
 registry.registerPath({
     method: "post",
@@ -36,6 +41,52 @@ registry.registerPath({
     },
     responses: {}
 });
+
+
+async function cleanupResourcePermissions(
+    resourceId: number, 
+    oldOrgId: string, 
+    newOrgId: string, 
+    movingUserId: string,
+    tx: any
+) {
+    try {
+        // remove all role-based permissions (roles belong to the old org)
+        const deletedRoleResources = await tx
+            .delete(roleResources)
+            .where(eq(roleResources.resourceId, resourceId))
+            .returning();
+
+        // remove all user permissions except the moving user
+        const deletedUserResources = await tx
+            .delete(userResources)
+            .where(and(
+                eq(userResources.resourceId, resourceId),
+                ne(userResources.userId, movingUserId)
+            ))
+            .returning();
+
+        // Note: we preserve authentication settings (passwords, pins, whitelist, tokens)
+        // as these are resource-specific and remain valid across orgs
+
+        logger.info(`Permission cleanup for resource ${resourceId}:`, {
+            resourceId,
+            oldOrgId,
+            newOrgId,
+            movingUserId,
+            deletedRolePermissions: deletedRoleResources.length,
+            deletedUserPermissions: deletedUserResources.length
+        });
+
+        return {
+            deletedRolePermissions: deletedRoleResources.length,
+            deletedUserPermissions: deletedUserResources.length
+        };
+    } catch (error) {
+        logger.error("Error during permission cleanup:", error);
+        throw error;
+    }
+}
 
 export async function moveResourceToOrg(
     req: Request,
@@ -61,7 +112,6 @@ export async function moveResourceToOrg(
             return next(createHttpError(HttpCode.UNAUTHORIZED, "User not authenticated"));
         }
 
-        // Step 1: Fetch resource
         const [resource] = await db
             .select()
             .from(resources)
@@ -74,17 +124,15 @@ export async function moveResourceToOrg(
             );
         }
 
-        // Step 2: Set req.userOrgId to source org so permissions are checked correctly
+        // set req.userOrgId to source org so permissions are checked correctly
         req.userOrgId = resource.orgId;
 
-        // Step 3: Prevent move to same org
         if (resource.orgId === orgId) {
             return next(
                 createHttpError(HttpCode.BAD_REQUEST, `Resource is already in this organization`)
             );
         }
 
-        // Step 4: Check if target org exists
         const [targetOrg] = await db
             .select()
             .from(orgs)
@@ -97,7 +145,6 @@ export async function moveResourceToOrg(
             );
         }
 
-        // Step 5: Verify user has access to target organization
         const [userOrgAccess] = await db
             .select()
             .from(userOrgs)
@@ -113,43 +160,68 @@ export async function moveResourceToOrg(
             );
         }
 
-        // Step 6: Move the resource
-        const [updatedResource] = await db
-            .update(resources)
-            .set({
-                orgId
-            })
-            .where(eq(resources.resourceId, resourceId))
-            .returning();
 
-        await db.insert(userResources).values({
-            userId: req.user!.userId,
-            resourceId
+        // perform the move within a transaction
+        const moveResult = await db.transaction(async (tx) => {
+            // Move the resource to new org
+            const [updatedResource] = await tx
+                .update(resources)
+                .set({ orgId })
+                .where(eq(resources.resourceId, resourceId))
+                .returning();
+
+            if (!updatedResource) {
+                throw new Error("Failed to update resource");
+            }
+
+            // Clean up permissions that become invalid
+            const cleanupResult = await cleanupResourcePermissions(
+                resourceId, 
+                resource.orgId, 
+                orgId, 
+                user.userId,
+                tx
+            );
+
+            // Grant access to moving user in new org (ensure they have access)
+            await tx.insert(userResources)
+                .values({
+                    userId: user.userId,
+                    resourceId
+                })
+                .onConflictDoNothing(); // In case they already have access somehow
+
+            return {
+                updatedResource,
+                cleanupResult
+            };
         });
 
+        logger.info(`Resource ${resourceId} successfully moved`, {
+            resourceId,
+            resourceName: resource.name,
+            oldOrgId: resource.orgId,
+            newOrgId: orgId,
+            movedByUserId: user.userId,
+            impactSummary: {
+                ...moveResult.cleanupResult
+            }
+        });
 
-        if (!updatedResource) {
-            return next(
-                createHttpError(HttpCode.INTERNAL_SERVER_ERROR, "Failed to update resource")
-            );
-        }
-
-        // Log the successful move
-        logger.info(`Resource ${resourceId} moved from org ${resource.orgId} to org ${orgId} by user ${user.userId}`);
-
-        // Step 7: Respond
         return response(res, {
             data: {
-                resourceId: updatedResource.resourceId,
+                resourceId: moveResult.updatedResource.resourceId,
+                resourceName: moveResult.updatedResource.name,
                 oldOrgId: resource.orgId,
                 newOrgId: orgId,
-                name: updatedResource.name
+                targetOrgName: targetOrg.name,
             },
             success: true,
             error: false,
             message: "Resource successfully moved to new organization",
             status: HttpCode.OK,
         });
+
     } catch (err) {
         logger.error("Error moving resource to org:", err);
         return next(
