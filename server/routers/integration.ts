@@ -355,6 +355,13 @@ authenticated.post(
   resource.moveResourceToOrg
 );
 
+authenticated.get(
+    `/resource/:resourceId/move-impact`, 
+    verifyApiKeyResourceAccess, 
+    verifyApiKeyHasAction(ActionsEnum.updateResource),
+    resource.getMoveImpact
+);
+
 
 authenticated.post(
     `/resource/:resourceId/access-token`,

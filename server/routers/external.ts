@@ -477,6 +477,13 @@ authenticated.post(
   resource.moveResourceToOrg
 );
 
+authenticated.get(
+    `/resource/:resourceId/move-impact`, 
+    verifyResourceAccess, 
+    verifyUserHasAction(ActionsEnum.updateResource),
+    resource.getMoveImpact
+);
+
 
 authenticated.post(
     `/resource/:resourceId/access-token`,
