@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Redirection vers la connexion...",
     "autoLoginError": "Erreur de connexion automatique",
     "autoLoginErrorNoRedirectUrl": "Aucune URL de redirection reçue du fournisseur d'identité.",
-    "autoLoginErrorGeneratingUrl": "Échec de la génération de l'URL d'authentification."
+    "autoLoginErrorGeneratingUrl": "Échec de la génération de l'URL d'authentification.",
+    "internationaldomaindetected": "Domaine international détecté",
+    "willbestoredas": "Sera stocké comme:"
 }

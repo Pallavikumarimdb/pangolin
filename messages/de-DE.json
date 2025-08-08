@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Weiterleitung zur Anmeldung...",
     "autoLoginError": "Fehler bei der automatischen Anmeldung",
     "autoLoginErrorNoRedirectUrl": "Keine Weiterleitungs-URL vom Identitätsanbieter erhalten.",
-    "autoLoginErrorGeneratingUrl": "Fehler beim Generieren der Authentifizierungs-URL."
+    "autoLoginErrorGeneratingUrl": "Fehler beim Generieren der Authentifizierungs-URL.",
+    "internationaldomaindetected": "Internationale Domäne erkannt",
+    "willbestoredas": "Wird gespeichert als:"
 }

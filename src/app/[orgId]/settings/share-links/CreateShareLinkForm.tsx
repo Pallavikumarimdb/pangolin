@@ -67,6 +67,7 @@ import {
 } from "@app/components/ui/collapsible";
 import AccessTokenSection from "./AccessTokenUsage";
 import { useTranslations } from "next-intl";
+import { toUnicode } from 'punycode';
 
 type FormProps = {
     open: boolean;
@@ -159,7 +160,7 @@ export default function CreateShareLinkForm({
                         .map((r) => ({
                             resourceId: r.resourceId,
                             name: r.name,
-                            resourceUrl: `${r.ssl ? "https://" : "http://"}${r.fullDomain}/`
+                            resourceUrl: `${r.ssl ? "https://" : "http://"}${toUnicode(r.fullDomain || "")}/`
                         }))
                 );
             }

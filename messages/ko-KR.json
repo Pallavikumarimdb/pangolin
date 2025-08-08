@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "로그인으로 리디렉션 중...",
     "autoLoginError": "자동 로그인 오류",
     "autoLoginErrorNoRedirectUrl": "ID 공급자로부터 리디렉션 URL을 받지 못했습니다.",
-    "autoLoginErrorGeneratingUrl": "인증 URL 생성 실패."
+    "autoLoginErrorGeneratingUrl": "인증 URL 생성 실패.",
+    "internationaldomaindetected": "국제 도메인 감지됨",
+    "willbestoredas": "다음과 같이 저장됩니다."
 }

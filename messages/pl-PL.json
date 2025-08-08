@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Przekierowanie do logowania...",
     "autoLoginError": "Błąd automatycznego logowania",
     "autoLoginErrorNoRedirectUrl": "Nie otrzymano URL przekierowania od dostawcy tożsamości.",
-    "autoLoginErrorGeneratingUrl": "Nie udało się wygenerować URL uwierzytelniania."
+    "autoLoginErrorGeneratingUrl": "Nie udało się wygenerować URL uwierzytelniania.",
+    "internationaldomaindetected": "Wykryto domenę międzynarodową",
+    "willbestoredas": "Będzie przechowywane jako:"
 }

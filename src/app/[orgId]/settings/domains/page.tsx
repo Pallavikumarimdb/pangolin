@@ -9,6 +9,7 @@ import { GetOrgResponse } from "@server/routers/org";
 import { redirect } from "next/navigation";
 import OrgProvider from "@app/providers/OrgProvider";
 import { ListDomainsResponse } from "@server/routers/domain";
+import { toUnicode } from 'punycode';
 
 type Props = {
     params: Promise<{ orgId: string }>;
@@ -22,7 +23,13 @@ export default async function DomainsPage(props: Props) {
         const res = await internal.get<
             AxiosResponse<ListDomainsResponse>
         >(`/org/${params.orgId}/domains`, await authCookieHeader());
-        domains = res.data.data.domains as DomainRow[];
+
+        const rawDomains = res.data.data.domains as DomainRow[];
+
+        domains = rawDomains.map((domain) => ({
+            ...domain,
+            baseDomain: toUnicode(domain.baseDomain),
+        }));
     } catch (e) {
         console.error(e);
     }

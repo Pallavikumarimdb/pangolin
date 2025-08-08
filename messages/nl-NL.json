@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Redirecting naar inloggen...",
     "autoLoginError": "Auto Login Fout",
     "autoLoginErrorNoRedirectUrl": "Geen redirect URL ontvangen van de identity provider.",
-    "autoLoginErrorGeneratingUrl": "Genereren van authenticatie-URL mislukt."
+    "autoLoginErrorGeneratingUrl": "Genereren van authenticatie-URL mislukt.",
+    "internationaldomaindetected": "Internationaal Domein Gedetecteerd",
+    "willbestoredas": "Wordt opgeslagen als:"
 }

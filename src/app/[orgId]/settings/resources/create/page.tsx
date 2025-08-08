@@ -88,6 +88,8 @@ import { ArrayElement } from "@server/types/ArrayElement";
 import { isTargetValid } from "@server/lib/validators";
 import { ListTargetsResponse } from "@server/routers/target";
 import { DockerManager, DockerState } from "@app/lib/docker";
+import { toUnicode } from 'punycode';
+import { DomainRow } from "../../domains/DomainsTable";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -164,12 +166,12 @@ export default function Page() {
         ...(!env.flags.allowRawResources
             ? []
             : [
-                  {
-                      id: "raw" as ResourceType,
-                      title: t("resourceRaw"),
-                      description: t("resourceRawDescription")
-                  }
-              ])
+                {
+                    id: "raw" as ResourceType,
+                    title: t("resourceRaw"),
+                    description: t("resourceRawDescription")
+                }
+            ])
     ];
 
     const baseForm = useForm<BaseResourceFormValues>({
@@ -468,7 +470,11 @@ export default function Page() {
                     });
 
                 if (res?.status === 200) {
-                    const domains = res.data.data.domains;
+                    const rawDomains = res.data.data.domains as DomainRow[];
+                    const domains = rawDomains.map((domain) => ({
+                        ...domain,
+                        baseDomain: toUnicode(domain.baseDomain),
+                    }));
                     setBaseDomains(domains);
                     // if (domains.length) {
                     //     httpForm.setValue("domainId", domains[0].domainId);
@@ -909,10 +915,10 @@ export default function Page() {
                                                                                     .target
                                                                                     .value
                                                                                     ? parseInt(
-                                                                                          e
-                                                                                              .target
-                                                                                              .value
-                                                                                      )
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                    )
                                                                                     : undefined
                                                                             )
                                                                         }

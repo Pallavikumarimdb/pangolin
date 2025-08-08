@@ -9,6 +9,7 @@ import {
     SelectTrigger,
     SelectValue
 } from "@/components/ui/select";
+import { toUnicode } from "punycode";
 
 interface DomainOption {
     baseDomain: string;
@@ -91,7 +92,7 @@ export default function CustomDomainInput({
                                 key={option.domainId}
                                 value={option.domainId}
                             >
-                                .{option.baseDomain}
+                                .{toUnicode(option.baseDomain)}
                             </SelectItem>
                         ))}
                     </SelectContent>

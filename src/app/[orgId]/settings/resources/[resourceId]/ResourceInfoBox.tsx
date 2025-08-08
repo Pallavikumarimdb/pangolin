@@ -12,15 +12,19 @@ import {
 } from "@app/components/InfoSection";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
+import { toUnicode } from 'punycode';
 
 type ResourceInfoBoxType = {};
 
-export default function ResourceInfoBox({}: ResourceInfoBoxType) {
+export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
     const { resource, authInfo } = useResourceContext();
 
     const t = useTranslations();
 
-    const fullUrl = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
+
+    const fullUrl = `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`;
+
+
 
     return (
         <Alert>
@@ -34,9 +38,9 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
                                 </InfoSectionTitle>
                                 <InfoSectionContent>
                                     {authInfo.password ||
-                                    authInfo.pincode ||
-                                    authInfo.sso ||
-                                    authInfo.whitelist ? (
+                                        authInfo.pincode ||
+                                        authInfo.sso ||
+                                        authInfo.whitelist ? (
                                         <div className="flex items-start space-x-2 text-green-500">
                                             <ShieldCheck className="w-4 h-4 mt-0.5" />
                                             <span>{t("protected")}</span>

@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "重定向到登录...",
     "autoLoginError": "自动登录错误",
     "autoLoginErrorNoRedirectUrl": "未从身份提供商收到重定向URL。",
-    "autoLoginErrorGeneratingUrl": "生成身份验证URL失败。"
+    "autoLoginErrorGeneratingUrl": "生成身份验证URL失败。",
+    "internationaldomaindetected": "检测到国际域名",
+    "willbestoredas": "将存储为："
 }

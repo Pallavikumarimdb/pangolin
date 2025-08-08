@@ -37,6 +37,8 @@ import { cn } from "@/lib/cn";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toUnicode } from "punycode";
+
 
 type OrganizationDomain = {
     domainId: string;
@@ -120,6 +122,7 @@ export default function DomainPicker2({
                         )
                         .map((domain) => ({
                             ...domain,
+                            baseDomain: toUnicode(domain.baseDomain),
                             type: domain.type as "ns" | "cname" | "wildcard"
                         }));
                     setOrganizationDomains(domains);
@@ -408,6 +411,12 @@ export default function DomainPicker2({
     const hasMoreProvided =
         sortedAvailableOptions.length > providedDomainsShown;
 
+
+    const isValidDomainCharacter = (char: string) => {
+        // Allow Unicode letters, numbers, hyphens, and periods
+        return /[\p{L}\p{N}.-]/u.test(char);
+    };
+
     return (
         <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -426,25 +435,32 @@ export default function DomainPicker2({
                             showProvidedDomainSearch
                                 ? ""
                                 : showSubdomainInput
-                                  ? ""
-                                  : t("domainPickerNotAvailableForCname")
+                                    ? ""
+                                    : t("domainPickerNotAvailableForCname")
                         }
                         disabled={
                             !showSubdomainInput && !showProvidedDomainSearch
                         }
                         className={cn(
                             !isSubdomainValid &&
-                                subdomainInput &&
-                                "border-red-500"
+                            subdomainInput &&
+                            "border-red-500"
                         )}
                         onChange={(e) => {
+                            const rawInput = e.target.value;
+                            const validInput = rawInput
+                                .split("")
+                                .filter((char) => isValidDomainCharacter(char))
+                                .join("");
+
                             if (showProvidedDomainSearch) {
-                                handleProvidedDomainInputChange(e.target.value);
+                                handleProvidedDomainInputChange(validInput);
                             } else {
-                                handleSubdomainChange(e.target.value);
+                                handleSubdomainChange(validInput);
                             }
                         }}
                     />
+
                     {showSubdomainInput && !subdomainInput && (
                         <p className="text-sm text-muted-foreground">
                             {t("domainPickerEnterSubdomainOrLeaveBlank")}
@@ -470,7 +486,7 @@ export default function DomainPicker2({
                                 {selectedBaseDomain ? (
                                     <div className="flex items-center space-x-2 min-w-0 flex-1">
                                         {selectedBaseDomain.type ===
-                                        "organization" ? null : (
+                                            "organization" ? null : (
                                             <Zap className="h-4 w-4 flex-shrink-0" />
                                         )}
                                         <span className="truncate">
@@ -564,67 +580,67 @@ export default function DomainPicker2({
                                         </CommandGroup>
                                         {(build === "saas" ||
                                             build === "enterprise") && (
-                                            <CommandSeparator className="my-2" />
-                                        )}
+                                                <CommandSeparator className="my-2" />
+                                            )}
                                     </>
                                 )}
 
                                 {(build === "saas" ||
                                     build === "enterprise") && (
-                                    <CommandGroup
-                                        heading={
-                                            build === "enterprise"
-                                                ? t(
-                                                      "domainPickerProvidedDomains"
-                                                  )
-                                                : t("domainPickerFreeDomains")
-                                        }
-                                        className="py-2"
-                                    >
-                                        <CommandList>
-                                            <CommandItem
-                                                key="provided-search"
-                                                onSelect={() =>
-                                                    handleBaseDomainSelect({
-                                                        id: "provided-search",
-                                                        domain:
-                                                            build ===
-                                                            "enterprise"
+                                        <CommandGroup
+                                            heading={
+                                                build === "enterprise"
+                                                    ? t(
+                                                        "domainPickerProvidedDomains"
+                                                    )
+                                                    : t("domainPickerFreeDomains")
+                                            }
+                                            className="py-2"
+                                        >
+                                            <CommandList>
+                                                <CommandItem
+                                                    key="provided-search"
+                                                    onSelect={() =>
+                                                        handleBaseDomainSelect({
+                                                            id: "provided-search",
+                                                            domain:
+                                                                build ===
+                                                                    "enterprise"
+                                                                    ? "Provided Domain"
+                                                                    : "Free Provided Domain",
+                                                            type: "provided-search"
+                                                        })
+                                                    }
+                                                    className="mx-2 rounded-md"
+                                                >
+                                                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 mr-3">
+                                                        <Zap className="h-4 w-4 text-primary" />
+                                                    </div>
+                                                    <div className="flex flex-col flex-1 min-w-0">
+                                                        <span className="font-medium truncate">
+                                                            {build === "enterprise"
                                                                 ? "Provided Domain"
-                                                                : "Free Provided Domain",
-                                                        type: "provided-search"
-                                                    })
-                                                }
-                                                className="mx-2 rounded-md"
-                                            >
-                                                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 mr-3">
-                                                    <Zap className="h-4 w-4 text-primary" />
-                                                </div>
-                                                <div className="flex flex-col flex-1 min-w-0">
-                                                    <span className="font-medium truncate">
-                                                        {build === "enterprise"
-                                                            ? "Provided Domain"
-                                                            : "Free Provided Domain"}
-                                                    </span>
-                                                    <span className="text-xs text-muted-foreground">
-                                                        {t(
-                                                            "domainPickerSearchForAvailableDomains"
+                                                                : "Free Provided Domain"}
+                                                        </span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {t(
+                                                                "domainPickerSearchForAvailableDomains"
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    <Check
+                                                        className={cn(
+                                                            "h-4 w-4 text-primary",
+                                                            selectedBaseDomain?.id ===
+                                                                "provided-search"
+                                                                ? "opacity-100"
+                                                                : "opacity-0"
                                                         )}
-                                                    </span>
-                                                </div>
-                                                <Check
-                                                    className={cn(
-                                                        "h-4 w-4 text-primary",
-                                                        selectedBaseDomain?.id ===
-                                                            "provided-search"
-                                                            ? "opacity-100"
-                                                            : "opacity-0"
-                                                    )}
-                                                />
-                                            </CommandItem>
-                                        </CommandList>
-                                    </CommandGroup>
-                                )}
+                                                    />
+                                                </CommandItem>
+                                            </CommandList>
+                                        </CommandGroup>
+                                    )}
                             </Command>
                         </PopoverContent>
                     </Popover>
@@ -680,7 +696,7 @@ export default function DomainPicker2({
                                         htmlFor={option.domainNamespaceId}
                                         data-state={
                                             selectedProvidedDomain?.domainNamespaceId ===
-                                            option.domainNamespaceId
+                                                option.domainNamespaceId
                                                 ? "checked"
                                                 : "unchecked"
                                         }

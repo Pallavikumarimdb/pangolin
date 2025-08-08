@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Перенаправление к входу...",
     "autoLoginError": "Ошибка автоматического входа",
     "autoLoginErrorNoRedirectUrl": "URL-адрес перенаправления не получен от провайдера удостоверения.",
-    "autoLoginErrorGeneratingUrl": "Не удалось сгенерировать URL-адрес аутентификации."
+    "autoLoginErrorGeneratingUrl": "Не удалось сгенерировать URL-адрес аутентификации.",
+    "internationaldomaindetected": "Обнаружен международный домен",
+    "willbestoredas": "Будет сохранен как:"
 }

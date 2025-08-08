@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Girişe yönlendiriliyorsunuz...",
     "autoLoginError": "Otomatik Giriş Hatası",
     "autoLoginErrorNoRedirectUrl": "Kimlik sağlayıcıdan yönlendirme URL'si alınamadı.",
-    "autoLoginErrorGeneratingUrl": "Kimlik doğrulama URL'si oluşturulamadı."
+    "autoLoginErrorGeneratingUrl": "Kimlik doğrulama URL'si oluşturulamadı.",
+    "internationaldomaindetected": "Uluslararası Etki Alanı Algılandı",
+    "willbestoredas": "Şu şekilde saklanacaktır:"
 }

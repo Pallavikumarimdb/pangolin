@@ -1450,5 +1450,7 @@
     "autoLoginRedirecting": "Reindirizzamento al login...",
     "autoLoginError": "Errore di Accesso Automatico",
     "autoLoginErrorNoRedirectUrl": "Nessun URL di reindirizzamento ricevuto dal provider di identità.",
-    "autoLoginErrorGeneratingUrl": "Impossibile generare l'URL di autenticazione."
+    "autoLoginErrorGeneratingUrl": "Impossibile generare l'URL di autenticazione.",
+    "internationaldomaindetected": "Rilevato dominio internazionale",
+    "willbestoredas": "Verrà archiviato come:"
 }

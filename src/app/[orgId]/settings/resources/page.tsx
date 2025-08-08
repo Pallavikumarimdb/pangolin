@@ -14,6 +14,7 @@ import { GetOrgResponse } from "@server/routers/org";
 import OrgProvider from "@app/providers/OrgProvider";
 import { getTranslations } from "next-intl/server";
 import { pullEnv } from "@app/lib/pullEnv";
+import { toUnicode } from "punycode";
 
 type ResourcesPageProps = {
     params: Promise<{ orgId: string }>;
@@ -75,7 +76,9 @@ export default async function ResourcesPage(props: ResourcesPageProps) {
             id: resource.resourceId,
             name: resource.name,
             orgId: params.orgId,
-            domain: `${resource.ssl ? "https://" : "http://"}${resource.fullDomain}`,
+
+
+            domain: `${resource.ssl ? "https://" : "http://"}${toUnicode(resource.fullDomain || "")}`,
             protocol: resource.protocol,
             proxyPort: resource.proxyPort,
             http: resource.http,
