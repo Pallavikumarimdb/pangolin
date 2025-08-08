@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Bu siteye uzaktan erişebilecek CIDR aralıklarını ekleyin. 10.0.0.0/24 veya 192.168.1.0/24 gibi formatlar kullanın.",
     "resourceEnableProxy": "Genel Proxy'i Etkinleştir",
     "resourceEnableProxyDescription": "Bu kaynağa genel proxy erişimini etkinleştirin. Bu sayede ağ dışından açık bir port üzerinden kaynağa bulut aracılığıyla erişim sağlanır. Traefik yapılandırması gereklidir.",
-    "externalProxyEnabled": "Dış Proxy Etkinleştirildi"
+    "externalProxyEnabled": "Dış Proxy Etkinleştirildi",
+    "internationaldomaindetected": "Uluslararası Etki Alanı Algılandı",
+    "willbestoredas": "Şu şekilde saklanacaktır:"
 }

@@ -80,6 +80,8 @@ import {
 import DomainPicker from "@app/components/DomainPicker";
 import { Globe } from "lucide-react";
 import { build } from "@server/build";
+import { DomainRow } from "../../../domains/DomainsTable";
+import { toUnicode } from "punycode";
 
 const TransferFormSchema = z.object({
     siteId: z.number()
@@ -193,7 +195,11 @@ export default function GeneralForm() {
                 });
 
             if (res?.status === 200) {
-                const domains = res.data.data.domains;
+                const rawDomains = res.data.data.domains as DomainRow[];
+                const domains = rawDomains.map((domain) => ({
+                    ...domain,
+                    baseDomain: toUnicode(domain.baseDomain), 
+                }));
                 setBaseDomains(domains);
                 setFormKey((key) => key + 1);
             }
@@ -391,10 +397,10 @@ export default function GeneralForm() {
                                                                                 .target
                                                                                 .value
                                                                                 ? parseInt(
-                                                                                      e
-                                                                                          .target
-                                                                                          .value
-                                                                                  )
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                )
                                                                                 : undefined
                                                                         )
                                                                     }
@@ -531,21 +537,21 @@ export default function GeneralForm() {
                                                                     className={cn(
                                                                         "w-full justify-between",
                                                                         !field.value &&
-                                                                            "text-muted-foreground"
+                                                                        "text-muted-foreground"
                                                                     )}
                                                                 >
                                                                     {field.value
                                                                         ? sites.find(
-                                                                              (
-                                                                                  site
-                                                                              ) =>
-                                                                                  site.siteId ===
-                                                                                  field.value
-                                                                          )
-                                                                              ?.name
+                                                                            (
+                                                                                site
+                                                                            ) =>
+                                                                                site.siteId ===
+                                                                                field.value
+                                                                        )
+                                                                            ?.name
                                                                         : t(
-                                                                              "siteSelect"
-                                                                          )}
+                                                                            "siteSelect"
+                                                                        )}
                                                                     <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>

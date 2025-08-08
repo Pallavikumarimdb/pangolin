@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Fügen Sie CIDR-Bereiche hinzu, die aus der Ferne auf diesen Standort zugreifen können. Verwenden Sie das Format wie 10.0.0.0/24 oder 192.168.1.0/24.",
     "resourceEnableProxy": "Öffentlichen Proxy aktivieren",
     "resourceEnableProxyDescription": "Ermöglichen Sie öffentliches Proxieren zu dieser Ressource. Dies ermöglicht den Zugriff auf die Ressource von außerhalb des Netzwerks durch die Cloud über einen offenen Port. Erfordert Traefik-Config.",
-    "externalProxyEnabled": "Externer Proxy aktiviert"
+    "externalProxyEnabled": "Externer Proxy aktiviert",
+    "internationaldomaindetected": "Internationale Domäne erkannt",
+    "willbestoredas": "Wird gespeichert als:"
 }

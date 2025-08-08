@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "添加能远程访问此站点的 CIDR 范围。使用格式如 10.0.0.0/24 或 192.168.1.0/24。",
     "resourceEnableProxy": "启用公共代理",
     "resourceEnableProxyDescription": "启用到此资源的公共代理。这允许外部网络通过开放端口访问资源。需要 Traefik 配置。",
-    "externalProxyEnabled": "外部代理已启用"
+    "externalProxyEnabled": "外部代理已启用",
+    "internationaldomaindetected": "检测到国际域名",
+    "willbestoredas": "将存储为："
 }

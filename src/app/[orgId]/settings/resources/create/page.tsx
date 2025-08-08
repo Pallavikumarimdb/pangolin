@@ -66,6 +66,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import DomainPicker from "@app/components/DomainPicker";
 import { build } from "@server/build";
+import { toUnicode } from 'punycode';
+import { DomainRow } from "../../domains/DomainsTable";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -122,12 +124,12 @@ export default function Page() {
         ...(!env.flags.allowRawResources
             ? []
             : [
-                  {
-                      id: "raw" as ResourceType,
-                      title: t("resourceRaw"),
-                      description: t("resourceRawDescription")
-                  }
-              ])
+                {
+                    id: "raw" as ResourceType,
+                    title: t("resourceRaw"),
+                    description: t("resourceRawDescription")
+                }
+            ])
     ];
 
     const baseForm = useForm<BaseResourceFormValues>({
@@ -275,7 +277,11 @@ export default function Page() {
                     });
 
                 if (res?.status === 200) {
-                    const domains = res.data.data.domains;
+                    const rawDomains = res.data.data.domains as DomainRow[];
+                    const domains = rawDomains.map((domain) => ({
+                        ...domain,
+                        baseDomain: toUnicode(domain.baseDomain),
+                    }));
                     setBaseDomains(domains);
                     // if (domains.length) {
                     //     httpForm.setValue("domainId", domains[0].domainId);
@@ -368,21 +374,21 @@ export default function Page() {
                                                                             className={cn(
                                                                                 "justify-between",
                                                                                 !field.value &&
-                                                                                    "text-muted-foreground"
+                                                                                "text-muted-foreground"
                                                                             )}
                                                                         >
                                                                             {field.value
                                                                                 ? sites.find(
-                                                                                      (
-                                                                                          site
-                                                                                      ) =>
-                                                                                          site.siteId ===
-                                                                                          field.value
-                                                                                  )
-                                                                                      ?.name
+                                                                                    (
+                                                                                        site
+                                                                                    ) =>
+                                                                                        site.siteId ===
+                                                                                        field.value
+                                                                                )
+                                                                                    ?.name
                                                                                 : t(
-                                                                                      "siteSelect"
-                                                                                  )}
+                                                                                    "siteSelect"
+                                                                                )}
                                                                             <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                         </Button>
                                                                     </FormControl>
@@ -597,10 +603,10 @@ export default function Page() {
                                                                                     .target
                                                                                     .value
                                                                                     ? parseInt(
-                                                                                          e
-                                                                                              .target
-                                                                                              .value
-                                                                                      )
+                                                                                        e
+                                                                                            .target
+                                                                                            .value
+                                                                                    )
                                                                                     : undefined
                                                                             )
                                                                         }

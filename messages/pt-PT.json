@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Adicione intervalos CIDR que podem acessar este site remotamente. Use o formato como 10.0.0.0/24 ou 192.168.1.0/24.",
     "resourceEnableProxy": "Ativar Proxy Público",
     "resourceEnableProxyDescription": "Permite proxy público para este recurso. Isso permite o acesso ao recurso de fora da rede através da nuvem em uma porta aberta. Requer configuração do Traefik.",
-    "externalProxyEnabled": "Proxy Externo Habilitado"
+    "externalProxyEnabled": "Proxy Externo Habilitado",
+    "internationaldomaindetected": "Domínio internacional detetado",
+    "willbestoredas": "Será armazenado como:"
 }

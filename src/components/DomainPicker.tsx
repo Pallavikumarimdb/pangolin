@@ -22,6 +22,7 @@ import { cn } from "@/lib/cn";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
+import { toUnicode } from "punycode";
 
 type OrganizationDomain = {
     domainId: string;
@@ -104,6 +105,7 @@ export default function DomainPicker({
                         )
                         .map((domain) => ({
                             ...domain,
+                            baseDomain: toUnicode(domain.baseDomain),
                             type: domain.type as "ns" | "cname" | "wildcard"
                         }));
                     setOrganizationDomains(domains);
@@ -298,6 +300,11 @@ export default function DomainPicker({
         }
     };
 
+    const isValidDomainCharacter = (char: string) => {
+        // Allow Unicode letters, numbers, hyphens, and periods
+        return /[\p{L}\p{N}.-]/u.test(char);
+    };
+
     return (
         <div className="space-y-6">
             {/* Domain Input */}
@@ -310,11 +317,14 @@ export default function DomainPicker({
                     value={userInput}
                     className="max-w-xl"
                     onChange={(e) => {
-                        // Only allow letters, numbers, hyphens, and periods
-                        const validInput = e.target.value.replace(
-                            /[^a-zA-Z0-9.-]/g,
-                            ""
-                        );
+                        const rawInput = e.target.value;
+
+                        // Allow Unicode characters but still filter out invalid ones
+                        const validInput = rawInput
+                            .split('')
+                            .filter(char => isValidDomainCharacter(char))
+                            .join('');
+
                         setUserInput(validInput);
                         // Clear selection when input changes
                         setSelectedOption(null);
@@ -508,8 +518,8 @@ export default function DomainPicker({
                                             </div>
                                             {selectedOption?.id ===
                                                 option.id && (
-                                                <CheckCircle2 className="h-4 w-4 text-primary" />
-                                            )}
+                                                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                                                )}
                                         </div>
                                     </div>
                                 ))}

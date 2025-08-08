@@ -10,6 +10,7 @@ import { GetOrgResponse } from "@server/routers/org";
 import OrgProvider from "@app/providers/OrgProvider";
 import ResourcesSplashCard from "./ResourcesSplashCard";
 import { getTranslations } from "next-intl/server";
+import { toUnicode } from "punycode";
 
 type ResourcesPageProps = {
     params: Promise<{ orgId: string }>;
@@ -53,7 +54,7 @@ export default async function ResourcesPage(props: ResourcesPageProps) {
             id: resource.resourceId,
             name: resource.name,
             orgId: params.orgId,
-            domain: `${resource.ssl ? "https://" : "http://"}${resource.fullDomain}`,
+            domain: `${resource.ssl ? "https://" : "http://"}${resource.fullDomain ? toUnicode(resource.fullDomain) : ""}`,
             site: resource.siteName || t('none'),
             siteId: resource.siteId || t('unknown'),
             protocol: resource.protocol,

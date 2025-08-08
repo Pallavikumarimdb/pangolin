@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Ajoutez des plages CIDR pouvant accéder à ce site à distance. Utilisez le format comme 10.0.0.0/24 ou 192.168.1.0/24.",
     "resourceEnableProxy": "Activer le proxy public",
     "resourceEnableProxyDescription": "Activez le proxy public vers cette ressource. Cela permet d'accéder à la ressource depuis l'extérieur du réseau via le cloud sur un port ouvert. Nécessite la configuration de Traefik.",
-    "externalProxyEnabled": "Proxy externe activé"
+    "externalProxyEnabled": "Proxy externe activé",
+    "internationaldomaindetected": "Domaine international détecté",
+    "willbestoredas": "Sera stocké comme:"
 }

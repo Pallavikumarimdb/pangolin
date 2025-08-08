@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Voeg CIDR-bereiken toe die deze site op afstand kunnen openen. Gebruik een format zoals 10.0.0.0/24 of 192.168.1.0/24.",
     "resourceEnableProxy": "Openbare proxy inschakelen",
     "resourceEnableProxyDescription": "Schakel publieke proxy in voor deze resource. Dit maakt toegang tot de resource mogelijk vanuit het netwerk via de cloud met een open poort. Vereist Traefik-configuratie.",
-    "externalProxyEnabled": "Externe Proxy Ingeschakeld"
+    "externalProxyEnabled": "Externe Proxy Ingeschakeld",
+    "internationaldomaindetected": "Internationaal Domein Gedetecteerd",
+    "willbestoredas": "Wordt opgeslagen als:"
 }

@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Add CIDR ranges that can access this site remotely. Use format like 10.0.0.0/24 or 192.168.1.0/24.",
     "resourceEnableProxy": "Enable Public Proxy",
     "resourceEnableProxyDescription": "Enable public proxying to this resource. This allows access to the resource from outside the network through the cloud on an open port. Requires Traefik config.",
-    "externalProxyEnabled": "External Proxy Enabled"
+    "externalProxyEnabled": "External Proxy Enabled",
+    "internationaldomaindetected": "Detekována mezinárodní doména",
+    "willbestoredas": "Bude uloženo jako:"
 }

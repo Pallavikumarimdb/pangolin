@@ -1323,5 +1323,7 @@
     "remoteSubnetsDescription": "Dodaj zakresy CIDR, które mogą uzyskać zdalny dostęp do tej witryny. Użyj formatu takiego jak 10.0.0.0/24 lub 192.168.1.0/24.",
     "resourceEnableProxy": "Włącz publiczny proxy",
     "resourceEnableProxyDescription": "Włącz publiczne proxy dla tego zasobu. To umożliwia dostęp do zasobu spoza sieci przez chmurę na otwartym porcie. Wymaga konfiguracji Traefik.",
-    "externalProxyEnabled": "Zewnętrzny Proxy Włączony"
+    "externalProxyEnabled": "Zewnętrzny Proxy Włączony",
+    "internationaldomaindetected": "Wykryto domenę międzynarodową",
+    "willbestoredas": "Będzie przechowywane jako:"
 }

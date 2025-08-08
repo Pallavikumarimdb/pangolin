@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
 import { createApiClient } from "@app/lib/api";
 import { build } from "@server/build";
+import { toUnicode } from 'punycode';
 
 type ResourceInfoBoxType = {};
 
@@ -29,7 +30,7 @@ export default function ResourceInfoBox({}: ResourceInfoBoxType) {
     const { isEnabled, isAvailable } = useDockerSocket(site!);
     const t = useTranslations();
 
-    let fullUrl = `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`;
+    let fullUrl = `${resource.ssl ? "https" : "http"}://${resource.fullDomain ? toUnicode(resource.fullDomain) : null}`;
 
     return (
         <Alert>
