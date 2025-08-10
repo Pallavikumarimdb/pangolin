@@ -529,6 +529,18 @@ export const versionMigrations = sqliteTable("versionMigrations", {
     executedAt: integer("executedAt").notNull()
 });
 
+export const ipSets = sqliteTable("ip_sets", {
+    id: text("id").primaryKey(),
+    name: text("name").notNull(),
+    description: text("description"),
+    ips: text("ips").notNull(),
+    orgId: text("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    createdAt: integer("created_at", { mode: "timestamp" }).defaultNow().notNull(),
+    updatedAt: integer("updated_at", { mode: "timestamp" }).defaultNow().notNull(),
+});
+
 export const resourceRules = sqliteTable("resourceRules", {
     ruleId: integer("ruleId").primaryKey({ autoIncrement: true }),
     resourceId: integer("resourceId")
@@ -536,9 +548,11 @@ export const resourceRules = sqliteTable("resourceRules", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     enabled: integer("enabled", { mode: "boolean" }).notNull().default(true),
     priority: integer("priority").notNull(),
-    action: text("action").notNull(), // ACCEPT, DROP
-    match: text("match").notNull(), // CIDR, PATH, IP
-    value: text("value").notNull()
+    action: text("action").notNull(), // ["ACCEPT", "DROP"] handled at app level
+    match: text("match").notNull(),  // ["CIDR", "IP", "PATH", "IP_SET"] handled at app level
+    value: text("value").notNull(),
+    ipSetId: text("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" })
+
 });
 
 export const supporterKey = sqliteTable("supporterKey", {

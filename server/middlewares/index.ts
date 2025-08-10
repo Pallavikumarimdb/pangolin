@@ -27,3 +27,4 @@ export * from "./verifyApiKeyAccess";
 export * from "./verifyDomainAccess";
 export * from "./verifyClientsEnabled";
 export * from "./verifyUserIsOrgOwner";
+export * from "./verifyIpSetsAccess";

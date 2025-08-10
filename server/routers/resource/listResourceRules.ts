@@ -1,5 +1,5 @@
 import { db } from "@server/db";
-import { resourceRules, resources } from "@server/db";
+import { resourceRules, resources, ipSets } from "@server/db";
 import HttpCode from "@server/types/HttpCode";
 import response from "@server/lib/response";
 import { eq, sql } from "drizzle-orm";
@@ -43,10 +43,13 @@ function queryResourceRules(resourceId: number) {
             match: resourceRules.match,
             value: resourceRules.value,
             priority: resourceRules.priority,
-            enabled: resourceRules.enabled
+            enabled: resourceRules.enabled,
+            ipSetId: resourceRules.ipSetId,
+            ipSetName: ipSets.name
         })
         .from(resourceRules)
         .leftJoin(resources, eq(resourceRules.resourceId, resources.resourceId))
+        .leftJoin(ipSets, eq(resourceRules.ipSetId, ipSets.id))
         .where(eq(resourceRules.resourceId, resourceId));
 
     return baseQuery;
@@ -60,7 +63,7 @@ export type ListResourceRulesResponse = {
 registry.registerPath({
     method: "get",
     path: "/resource/{resourceId}/rules",
-    description: "List rules for a resource.",
+    description: "List rules for a resource with IP set information.",
     tags: [OpenAPITags.Resource, OpenAPITags.Rule],
     request: {
         params: listResourceRulesParamsSchema,
@@ -126,7 +129,7 @@ export async function listResourceRules(
         const totalCountResult = await countQuery;
         const totalCount = totalCountResult[0].count;
 
-        // sort rules list by the priority in ascending order
+        // Sort rules list by the priority in ascending order
         rulesList = rulesList.sort((a, b) => a.priority - b.priority);
 
         return response<ListResourceRulesResponse>(res, {

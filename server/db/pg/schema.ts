@@ -401,6 +401,17 @@ export const versionMigrations = pgTable("versionMigrations", {
     executedAt: bigint("executedAt", { mode: "number" }).notNull()
 });
 
+export const ipSets = pgTable("ip_sets", {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull().unique(),
+    description: text("description"),
+    ips: text("ips").notNull(), // JSON string array of IP addresses/CIDR ranges
+    orgId: varchar("orgId")
+        .notNull()
+        .references(() => orgs.orgId, { onDelete: "cascade" }),
+    createdAt: bigint("createdAt", { mode: "number" }).notNull()
+});
+
 export const resourceRules = pgTable("resourceRules", {
     ruleId: serial("ruleId").primaryKey(),
     resourceId: integer("resourceId")
@@ -409,8 +420,10 @@ export const resourceRules = pgTable("resourceRules", {
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
     action: varchar("action").notNull(), // ACCEPT, DROP
-    match: varchar("match").notNull(), // CIDR, PATH, IP
-    value: varchar("value").notNull()
+    match: varchar("match", { enum: ["CIDR", "IP", "PATH", "IP_SET"] }).notNull(),
+    value: varchar("value").notNull(),
+    ipSetId: serial("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" }), // New field
+    createdAt: bigint("createdAt", { mode: "number" }).notNull()
 });
 
 export const supporterKey = pgTable("supporterKey", {
