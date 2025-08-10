@@ -428,12 +428,8 @@ export default function ResourceRules(props: {
                 updateResource({ applyRules: rulesEnabled });
             }
 
-<<<<<<< HEAD
             // Save rules
             for (const rule of rules) {
-=======
-            for (let rule of rules) {
->>>>>>> eef186de (Shared IP Rule Sets, IP Range and Add rule changes match type)
                 const data = {
                     action: rule.action,
                     match: rule.match,
@@ -526,7 +522,6 @@ export default function ResourceRules(props: {
                         data
                     );
                 }
-<<<<<<< HEAD
 
                 setRules([
                     ...rules.map((r) => {
@@ -538,8 +533,6 @@ export default function ResourceRules(props: {
                         return res;
                     })
                 ]);
-=======
->>>>>>> eef186de (Shared IP Rule Sets, IP Range and Add rule changes match type)
             }
 
             // Remove deleted rules
