@@ -1,12 +1,37 @@
 import z from "zod";
 
-export function isValidCIDR(cidr: string): boolean {
-    return z.string().cidr().safeParse(cidr).success;
+export function isValidIP(ip: string): boolean {
+    // IPv4 validation
+    const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+    
+    // IPv6 validation (basic)
+    const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/;
+    
+    return ipv4Regex.test(ip) || ipv6Regex.test(ip);
 }
 
-export function isValidIP(ip: string): boolean {
-    return z.string().ip().safeParse(ip).success;
+export function isValidCIDR(cidr: string): boolean {
+    const parts = cidr.split('/');
+    if (parts.length !== 2) return false;
+    
+    const ip = parts[0];
+    const prefix = parseInt(parts[1], 10);
+    
+    if (!isValidIP(ip)) return false;
+    
+    // IPv4 CIDR
+    if (ip.includes('.')) {
+        return prefix >= 0 && prefix <= 32;
+    }
+    
+    // IPv6 CIDR
+    if (ip.includes(':')) {
+        return prefix >= 0 && prefix <= 128;
+    }
+    
+    return false;
 }
+
 
 export function isValidUrlGlobPattern(pattern: string): boolean {
     if (pattern === "/") {

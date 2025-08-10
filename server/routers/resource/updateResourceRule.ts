@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { resourceRules, resources } from "@server/db";
+import { resourceRules, resources, ipSets } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -15,7 +15,18 @@ import {
 } from "@server/lib/validators";
 import { OpenAPITags, registry } from "@server/openApi";
 
-// Define Zod schema for request parameters validation
+
+function normalizeIPValue(value: string): { normalizedValue: string; finalMatch: "IP" | "CIDR" } {
+    if (isValidIP(value)) {
+        // Auto-convert single IP to CIDR
+        const cidrValue = value.includes(':') ? `${value}/128` : `${value}/32`;
+        return { normalizedValue: cidrValue, finalMatch: "CIDR" };
+    } else if (isValidCIDR(value)) {
+        return { normalizedValue: value, finalMatch: "CIDR" };
+    }
+    return { normalizedValue: value, finalMatch: "IP" };
+}
+
 const updateResourceRuleParamsSchema = z
     .object({
         ruleId: z.string().transform(Number).pipe(z.number().int().positive()),
@@ -30,20 +41,29 @@ const updateResourceRuleParamsSchema = z
 const updateResourceRuleSchema = z
     .object({
         action: z.enum(["ACCEPT", "DROP"]).optional(),
-        match: z.enum(["CIDR", "IP", "PATH"]).optional(),
+        match: z.enum(["CIDR", "IP", "PATH", "IP_SET", "IP_CIDR"]).optional(),
         value: z.string().min(1).optional(),
-        priority: z.number().int(),
-        enabled: z.boolean().optional()
+        priority: z.number().int().optional(),
+        enabled: z.boolean().optional(),
+        ipSetId: z.string().uuid().nullable().optional().or(z.literal(""))
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {
         message: "At least one field must be provided for update"
+    })
+    .refine((data) => {
+        if (data.match === "IP_SET") {
+            return data.ipSetId && data.ipSetId.length > 0;
+        }
+        return true;
+    }, {
+        message: "ipSetId is required when match type is IP_SET"
     });
 
 registry.registerPath({
     method: "post",
     path: "/resource/{resourceId}/rule/{ruleId}",
-    description: "Update a resource rule.",
+    description: "Update a resource rule with enhanced IP handling and IP set support.",
     tags: [OpenAPITags.Resource, OpenAPITags.Rule],
     request: {
         params: updateResourceRuleParamsSchema,
@@ -89,7 +109,7 @@ export async function updateResourceRule(
         }
 
         const { ruleId, resourceId } = parsedParams.data;
-        const updateData = parsedBody.data;
+        let updateData = parsedBody.data;
 
         // Verify that the resource exists
         const [resource] = await db
@@ -107,11 +127,11 @@ export async function updateResourceRule(
             );
         }
 
-        if (!resource.http) {
+        if (!resource.http && (updateData.match === "PATH" || updateData.match === "IP_SET")) {
             return next(
                 createHttpError(
                     HttpCode.BAD_REQUEST,
-                    "Cannot create rule for non-http resource"
+                    "Cannot create PATH or IP_SET rules for non-http resource"
                 )
             );
         }
@@ -141,12 +161,46 @@ export async function updateResourceRule(
             );
         }
 
-        const match = updateData.match || existingRule.match;
-        const { value } = updateData;
+        // Process match type and value updates
+        const finalMatch = updateData.match || existingRule.match;
+        let finalUpdateData = { ...updateData };
 
-        if (value !== undefined) {
-            if (match === "CIDR") {
-                if (!isValidCIDR(value)) {
+        if (updateData.match === "IP_SET") {
+            if (!updateData.ipSetId) {
+                return next(
+                    createHttpError(
+                        HttpCode.BAD_REQUEST,
+                        "IP Set ID is required for IP_SET match type"
+                    )
+                );
+            }
+
+            const [ipSet] = await db
+                .select()
+                .from(ipSets)
+                .where(eq(ipSets.id, updateData.ipSetId))
+                .limit(1);
+
+            if (!ipSet) {
+                return next(
+                    createHttpError(
+                        HttpCode.NOT_FOUND,
+                        `IP Set with ID ${updateData.ipSetId} not found`
+                    )
+                );
+            }
+
+            finalUpdateData.value = updateData.ipSetId;
+        } else if (updateData.match === "IP_CIDR" && updateData.value) {
+            // Handle unified IP/CIDR input
+            const normalized = normalizeIPValue(updateData.value);
+            finalUpdateData.match = normalized.finalMatch;
+            finalUpdateData.value = normalized.normalizedValue;
+            finalUpdateData.ipSetId = ""; // Clear IP set reference
+        } else if (updateData.value !== undefined) {
+
+            if (finalMatch === "CIDR") {
+                if (!isValidCIDR(updateData.value)) {
                     return next(
                         createHttpError(
                             HttpCode.BAD_REQUEST,
@@ -154,8 +208,8 @@ export async function updateResourceRule(
                         )
                     );
                 }
-            } else if (match === "IP") {
-                if (!isValidIP(value)) {
+            } else if (finalMatch === "IP") {
+                if (!isValidIP(updateData.value)) {
                     return next(
                         createHttpError(
                             HttpCode.BAD_REQUEST,
@@ -163,8 +217,8 @@ export async function updateResourceRule(
                         )
                     );
                 }
-            } else if (match === "PATH") {
-                if (!isValidUrlGlobPattern(value)) {
+            } else if (finalMatch === "PATH") {
+                if (!isValidUrlGlobPattern(updateData.value)) {
                     return next(
                         createHttpError(
                             HttpCode.BAD_REQUEST,
@@ -173,12 +227,15 @@ export async function updateResourceRule(
                     );
                 }
             }
+            
+            if (finalMatch !== "IP_SET") {
+                finalUpdateData.ipSetId = "";
+            }
         }
 
-        // Update the rule
         const [updatedRule] = await db
             .update(resourceRules)
-            .set(updateData)
+            .set(finalUpdateData)
             .where(eq(resourceRules.ruleId, ruleId))
             .returning();
 
