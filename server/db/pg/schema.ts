@@ -8,7 +8,7 @@ import {
     real,
     text
 } from "drizzle-orm/pg-core";
-import { InferSelectModel } from "drizzle-orm";
+import { InferSelectModel, sql } from "drizzle-orm";
 
 export const domains = pgTable("domains", {
     domainId: varchar("domainId").primaryKey(),
@@ -402,14 +402,21 @@ export const versionMigrations = pgTable("versionMigrations", {
 });
 
 export const ipSets = pgTable("ip_sets", {
-    id: serial("id").primaryKey(),
+    id: text("id").primaryKey(),
     name: text("name").notNull().unique(),
     description: text("description"),
     ips: text("ips").notNull(), // JSON string array of IP addresses/CIDR ranges
-    orgId: varchar("orgId")
+    orgId: text("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
-    createdAt: bigint("createdAt", { mode: "number" }).notNull()
+
+    createdAt: bigint("created_at", { mode: "number" })
+        .notNull()
+        .default(sql`(EXTRACT(EPOCH FROM now()) * 1000)::bigint`),
+
+    updatedAt: bigint("updated_at", { mode: "number" })
+        .notNull()
+        .default(sql`(EXTRACT(EPOCH FROM now()) * 1000)::bigint`),
 });
 
 export const resourceRules = pgTable("resourceRules", {
@@ -419,11 +426,10 @@ export const resourceRules = pgTable("resourceRules", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
-    action: varchar("action").notNull(), // ACCEPT, DROP
-    match: varchar("match", { enum: ["CIDR", "IP", "PATH", "IP_SET"] }).notNull(),
-    value: varchar("value").notNull(),
-    ipSetId: serial("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" }), // New field
-    createdAt: bigint("createdAt", { mode: "number" }).notNull()
+    action: text("action").notNull(), // ["ACCEPT", "DROP"] handled at app level
+    match: text("match").notNull(),   // ["CIDR", "IP", "PATH", "IP_SET"] handled at app level
+    value: text("value").notNull(),
+    ipSetId: text("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" }),
 });
 
 export const supporterKey = pgTable("supporterKey", {
