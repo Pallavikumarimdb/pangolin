@@ -1323,6 +1323,7 @@
     "remoteSubnetsDescription": "Add CIDR ranges that can be accessed from this site remotely using clients. Use format like 10.0.0.0/24. This ONLY applies to VPN client connectivity.",
     "resourceEnableProxy": "Enable Public Proxy",
     "resourceEnableProxyDescription": "Enable public proxying to this resource. This allows access to the resource from outside the network through the cloud on an open port. Requires Traefik config.",
+    "externalProxyEnabled": "External Proxy Enabled",
     "ipOrRange": "IP or Range",
     "ipSet": "IP Set",
     "ipSets": "IP Sets",
