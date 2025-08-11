@@ -751,7 +751,7 @@ export default function ResourceRules(props: {
 
     return (
         <SettingsContainer>
-                        {/* <Alert className="hidden md:block"> */}
+            {/* <Alert className="hidden md:block"> */}
             {/*     <InfoIcon className="h-4 w-4" /> */}
             {/*     <AlertTitle className="font-semibold">{t('rulesAbout')}</AlertTitle> */}
             {/*     <AlertDescription className="mt-4"> */}
@@ -1189,19 +1189,9 @@ export default function ResourceRules(props: {
                                         </TableRow>
                                     )}
                                 </TableBody>
-                                <TableCaption className="text-left p-4">
-                                    <div className="flex items-center space-x-4 text-sm text-muted-foreground">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 bg-green-200 border border-green-300 rounded"></div>
-                                            <span>{t('newRule')}</span>
-                                        </div>
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-3 h-3 bg-blue-200 border border-blue-300 rounded"></div>
-                                            <span>{t('modifiedRule')}</span>
-                                        </div>
-                                        <span>{t('rulesOrder')}</span>
-                                    </div>
-                                </TableCaption>
+                                {/* <TableCaption> */}
+                                {/*     {t('rulesOrder')} */}
+                                {/* </TableCaption> */}
                             </Table>
                         </div>
                     </div>

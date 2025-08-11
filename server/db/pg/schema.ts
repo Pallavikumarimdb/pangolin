@@ -6,7 +6,8 @@ import {
     integer,
     bigint,
     real,
-    text
+    text,
+    timestamp 
 } from "drizzle-orm/pg-core";
 import { InferSelectModel, sql } from "drizzle-orm";
 
@@ -402,21 +403,21 @@ export const versionMigrations = pgTable("versionMigrations", {
 });
 
 export const ipSets = pgTable("ip_sets", {
-    id: text("id").primaryKey(),
-    name: text("name").notNull().unique(),
-    description: text("description"),
-    ips: text("ips").notNull(), // JSON string array of IP addresses/CIDR ranges
-    orgId: text("orgId")
+    id: varchar("id").primaryKey().notNull(),
+    name: varchar("name").notNull().unique(),
+    description: varchar("description"),
+    ips: varchar("ips").notNull(),
+    orgId: varchar("orgId")
         .notNull()
         .references(() => orgs.orgId, { onDelete: "cascade" }),
 
-    createdAt: bigint("created_at", { mode: "number" })
+    createdAt: timestamp("created_at")
         .notNull()
-        .default(sql`(EXTRACT(EPOCH FROM now()) * 1000)::bigint`),
+        .defaultNow(),
 
-    updatedAt: bigint("updated_at", { mode: "number" })
+    updatedAt: timestamp("updated_at")
         .notNull()
-        .default(sql`(EXTRACT(EPOCH FROM now()) * 1000)::bigint`),
+        .defaultNow(),
 });
 
 export const resourceRules = pgTable("resourceRules", {
@@ -426,10 +427,10 @@ export const resourceRules = pgTable("resourceRules", {
         .references(() => resources.resourceId, { onDelete: "cascade" }),
     enabled: boolean("enabled").notNull().default(true),
     priority: integer("priority").notNull(),
-    action: text("action").notNull(), // ["ACCEPT", "DROP"] handled at app level
-    match: text("match").notNull(),   // ["CIDR", "IP", "PATH", "IP_SET"] handled at app level
-    value: text("value").notNull(),
-    ipSetId: text("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" }),
+    action: varchar("action").notNull(), // ["ACCEPT", "DROP"] handled at app level
+    match: varchar("match").notNull(),   // ["CIDR", "IP", "PATH", "IP_SET"] handled at app level
+    value: varchar("value").notNull(),
+    ipSetId: varchar("ip_set_id").references(() => ipSets.id, { onDelete: "cascade" }),
 });
 
 export const supporterKey = pgTable("supporterKey", {
