@@ -1358,6 +1358,7 @@
     "ipSetErrorUpdateDescription": "An error occurred while updating the IP set",
     "ipSetErrorDelete": "Failed to Delete IP Set",
     "ipSetErrorDeleteDescription": "An error occurred while deleting the IP set. It may be in use by existing rules.",
+    "ipSetErrorFetch": "Failed to Fetch IP Sets",
     "addRule": "Add Rule",
     "priority": "Priority",
     "auto": "Auto",
@@ -1373,5 +1374,6 @@
     "resetChanges": "Reset Changes",
     "saving": "Saving...",
     "addipaddress":"Add IP Address",
-    "remove": "Remove"
+    "remove": "Remove",
+    "save": "Save"
 }

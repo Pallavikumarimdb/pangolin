@@ -73,28 +73,13 @@ import {
 import { Switch } from "@app/components/ui/switch";
 import { useRouter, useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from "@app/components/ui/dialog";
-import { Badge } from "@app/components/ui/badge";
-import { Textarea } from "@app/components/ui/textarea";
-import { Separator } from "@app/components/ui/separator";
-import EditIPSetForm from "@app/components/EditIPSetForm";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 
-
-type IPSet = {
-    id: string;
-    name: string;
-    description?: string;
-    ips: string[];
-    createdAt: string;
-    updatedAt: string;
-};
+// Import our new modular IP Set components
+import IPSetManager, { IPSet } from "@app/components/ipsets/IPSetManager";
+import IPSetSelector from "@app/components/ipsets/IPSetSelector";
+import useIPSets from "@app/hooks/useIPSets";
 
 // Schema for rule validation with IP_CIDR support
 const addRuleSchema = z.object({
@@ -105,19 +90,11 @@ const addRuleSchema = z.object({
     ipSetId: z.string().optional()
 });
 
-// Schema for IP Set creation
-const createIPSetSchema = z.object({
-    name: z.string().min(1, "Name is required").max(100),
-    description: z.string().optional(),
-    ips: z.array(z.string()).min(1, "At least one IP is required")
-});
-
 type LocalRule = ArrayElement<ListResourceRulesResponse["rules"]> & {
     new?: boolean;
     updated?: boolean;
     ipSetId: string | null
     ipSetName: string | null
-
 };
 
 export default function ResourceRules(props: {
@@ -127,17 +104,24 @@ export default function ResourceRules(props: {
     const { resource, updateResource } = useResourceContext();
     const api = createApiClient(useEnvContext());
     const [rules, setRules] = useState<LocalRule[]>([]);
-    const [ipSets, setIPSets] = useState<IPSet[]>([]);
     const [rulesToRemove, setRulesToRemove] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [rulesEnabled, setRulesEnabled] = useState(resource.applyRules);
-    const [ipSetDialogOpen, setIPSetDialogOpen] = useState(false);
-    const [manageIPSetsDialogOpen, setManageIPSetsDialogOpen] = useState(false);
-    const [ipSetToEdit, setIPSetToEdit] = useState<IPSet | null>(null);
     const { orgId } = useParams();
     const router = useRouter();
     const t = useTranslations();
+
+    // Use our custom IP Sets hook
+    const {
+        ipSets,
+        loading: ipSetsLoading,
+        getIPSetById
+    } = useIPSets({
+        orgId: orgId as string,
+        t,
+        onError: (error) => console.error('IP Sets error:', error)
+    });
 
     const RuleAction = {
         ACCEPT: t('alwaysAllow'),
@@ -160,27 +144,6 @@ export default function ResourceRules(props: {
         }
     });
 
-    const createIPSetForm = useForm({
-        resolver: zodResolver(createIPSetSchema),
-        defaultValues: {
-            name: "",
-            description: "",
-            ips: [""]
-        }
-    });
-
-
-    const fetchIPSets = async () => {
-        try {
-            const res = await api.get<AxiosResponse<{ ipSets: IPSet[] }>>(`/org/${orgId}/ip-sets`);
-            if (res.status === 200) {
-                setIPSets(res.data.data.ipSets);
-            }
-        } catch (err) {
-            console.error('Failed to fetch IP sets:', err);
-        }
-    };
-
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -190,8 +153,6 @@ export default function ResourceRules(props: {
                 if (rulesRes.status === 200) {
                     setRules(rulesRes.data.data.rules);
                 }
-
-                await fetchIPSets();
             } catch (err) {
                 console.error(err);
                 toast({
@@ -271,7 +232,7 @@ export default function ResourceRules(props: {
         }
 
         // Find IP Set name for display
-        const selectedIPSet = ipSets.find(set => set.id === data.ipSetId);
+        const selectedIPSet = getIPSetById(data.ipSetId || "");
 
         const newRule: LocalRule = {
             ...data,
@@ -317,7 +278,6 @@ export default function ResourceRules(props: {
         );
     }
 
-
     function getValueHelpText(type: string) {
         switch (type) {
             case "IP_CIDR":
@@ -328,78 +288,6 @@ export default function ResourceRules(props: {
                 return t('rulesMatchIPSetDescription');
             default:
                 return "";
-        }
-    }
-
-    async function createIPSet(data: z.infer<typeof createIPSetSchema>) {
-        try {
-            setLoading(true);
-            const res = await api.post(`/org/${orgId}/ip-sets`, data);
-            if (res.status === 201) {
-                await fetchIPSets();
-                toast({
-                    title: t('ipSetCreated'),
-                    description: t('ipSetCreatedDescription')
-                });
-                createIPSetForm.reset();
-                setIPSetDialogOpen(false);
-            }
-        } catch (err) {
-            console.error(err);
-            toast({
-                variant: "destructive",
-                title: t('ipSetErrorCreate'),
-                description: formatAxiosError(err, t('ipSetErrorCreateDescription'))
-            });
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function updateIPSet(ipSetId: string, data: Partial<IPSet>) {
-        try {
-            setLoading(true);
-            const res = await api.put(`/org/${orgId}/ip-sets/${ipSetId}`, data);
-            if (res.status === 200) {
-                await fetchIPSets();
-                toast({
-                    title: t('ipSetUpdated'),
-                    description: t('ipSetUpdatedDescription')
-                });
-                setIPSetToEdit(null);
-            }
-        } catch (err) {
-            console.error(err);
-            toast({
-                variant: "destructive",
-                title: t('ipSetErrorUpdate'),
-                description: formatAxiosError(err, t('ipSetErrorUpdateDescription'))
-            });
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function deleteIPSet(ipSetId: string) {
-        try {
-            setLoading(true);
-            const res = await api.delete(`/org/${orgId}/ip-sets/${ipSetId}`);
-            if (res.status === 200) {
-                await fetchIPSets();
-                toast({
-                    title: t('ipSetDeleted'),
-                    description: t('ipSetDeletedDescription')
-                });
-            }
-        } catch (err) {
-            console.error(err);
-            toast({
-                variant: "destructive",
-                title: t('ipSetErrorDelete'),
-                description: formatAxiosError(err, t('ipSetErrorDeleteDescription'))
-            });
-        } finally {
-            setLoading(false);
         }
     }
 
@@ -664,28 +552,17 @@ export default function ResourceRules(props: {
             cell: ({ row }) => {
                 if (row.original.match === "IP_SET") {
                     return (
-                        <div className="min-w-[200px]">
-                            <Select
-                                defaultValue={row.original.ipSetId || ""}
-                                onValueChange={(value) =>
-                                    updateRule(row.original.ruleId, {
-                                        ipSetId: value,
-                                        value: value
-                                    })
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder={t('selectIPSet')} />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {ipSets.map((ipSet) => (
-                                        <SelectItem key={ipSet.id} value={ipSet.id}>
-                                            {ipSet.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <IPSetSelector
+                            ipSets={ipSets}
+                            value={row.original.ipSetId || ""}
+                            onValueChange={(value) =>
+                                updateRule(row.original.ruleId, {
+                                    ipSetId: value,
+                                    value: value
+                                })
+                            }
+                            placeholder={t('selectIPSet')}
+                        />
                     );
                 }
 
@@ -751,49 +628,6 @@ export default function ResourceRules(props: {
 
     return (
         <SettingsContainer>
-            {/* <Alert className="hidden md:block"> */}
-            {/*     <InfoIcon className="h-4 w-4" /> */}
-            {/*     <AlertTitle className="font-semibold">{t('rulesAbout')}</AlertTitle> */}
-            {/*     <AlertDescription className="mt-4"> */}
-            {/*         <div className="space-y-1 mb-4"> */}
-            {/*             <p> */}
-            {/*                 {t('rulesAboutDescription')} */}
-            {/*             </p> */}
-            {/*         </div> */}
-            {/*         <InfoSections cols={2}> */}
-            {/*             <InfoSection> */}
-            {/*                 <InfoSectionTitle>{t('rulesActions')}</InfoSectionTitle> */}
-            {/*                 <ul className="text-sm text-muted-foreground space-y-1"> */}
-            {/*                     <li className="flex items-center gap-2"> */}
-            {/*                         <Check className="text-green-500 w-4 h-4" /> */}
-            {/*                         {t('rulesActionAlwaysAllow')} */}
-            {/*                     </li> */}
-            {/*                     <li className="flex items-center gap-2"> */}
-            {/*                         <X className="text-red-500 w-4 h-4" /> */}
-            {/*                         {t('rulesActionAlwaysDeny')} */}
-            {/*                     </li> */}
-            {/*                 </ul> */}
-            {/*             </InfoSection> */}
-            {/*             <InfoSection> */}
-            {/*                 <InfoSectionTitle> */}
-            {/*                     {t('rulesMatchCriteria')} */}
-            {/*                 </InfoSectionTitle> */}
-            {/*                 <ul className="text-sm text-muted-foreground space-y-1"> */}
-            {/*                     <li className="flex items-center gap-2"> */}
-            {/*                         {t('rulesMatchCriteriaIpAddress')} */}
-            {/*                     </li> */}
-            {/*                     <li className="flex items-center gap-2"> */}
-            {/*                         {t('rulesMatchCriteriaIpAddressRange')} */}
-            {/*                     </li> */}
-            {/*                     <li className="flex items-center gap-2"> */}
-            {/*                         {t('rulesMatchCriteriaUrl')} */}
-            {/*                     </li> */}
-            {/*                 </ul> */}
-            {/*             </InfoSection> */}
-            {/*         </InfoSections> */}
-            {/*     </AlertDescription> */}
-            {/* </Alert> */}
-
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
@@ -815,184 +649,11 @@ export default function ResourceRules(props: {
                             />
                         </div>
 
-                        {/* IP Sets Management */}
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-medium">{t('ipSets')}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                    {t('ipSetsDescription')}
-                                </p>
-                            </div>
-                            <div className="flex space-x-2">
-                                <Dialog open={manageIPSetsDialogOpen} onOpenChange={setManageIPSetsDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button variant="outline">
-                                            <Settings className="mr-2 h-4 w-4" />
-                                            {t('manageIPSets')}
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-                                        <DialogHeader>
-                                            <DialogTitle>{t('manageIPSets')}</DialogTitle>
-                                            <DialogDescription>
-                                                {t('manageIPSetsDescription')}
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <div className="space-y-4">
-                                            {ipSets.map((ipSet) => (
-                                                <div key={ipSet.id} className="border rounded-lg p-4">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <h4 className="font-medium">{ipSet.name}</h4>
-                                                        <div className="flex space-x-2">
-                                                            <Button
-                                                                variant="outline"
-                                                                size="sm"
-                                                                onClick={() => setIPSetToEdit(ipSet)}
-                                                            >
-                                                                {t('edit')}
-                                                            </Button>
-                                                            <Button
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                onClick={() => deleteIPSet(ipSet.id)}
-                                                            >
-                                                                {t('delete')}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    {ipSet.description && (
-                                                        <p className="text-sm text-muted-foreground mb-2">
-                                                            {ipSet.description}
-                                                        </p>
-                                                    )}
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {ipSet.ips.map((ip, index) => (
-                                                            <Badge key={index} variant="secondary">
-                                                                {ip}
-                                                            </Badge>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            ))}
-                                            {ipSets.length === 0 && (
-                                                <p className="text-center text-muted-foreground py-8">
-                                                    {t('noIPSets')}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </DialogContent>
-                                </Dialog>
-
-                                <Dialog open={ipSetDialogOpen} onOpenChange={setIPSetDialogOpen}>
-                                    <DialogTrigger asChild>
-                                        <Button>
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            {t('createIPSet')}
-                                        </Button>
-                                    </DialogTrigger>
-                                    <DialogContent>
-                                        <DialogHeader>
-                                            <DialogTitle>{t('createIPSet')}</DialogTitle>
-                                            <DialogDescription>
-                                                {t('createIPSetDescription')}
-                                            </DialogDescription>
-                                        </DialogHeader>
-                                        <Form {...createIPSetForm}>
-                                            <form onSubmit={createIPSetForm.handleSubmit(createIPSet)} className="space-y-4">
-                                                <FormField
-                                                    control={createIPSetForm.control}
-                                                    name="name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>{t('name')}</FormLabel>
-                                                            <FormControl>
-                                                                <Input {...field} placeholder={t('ipSetNamePlaceholder')} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={createIPSetForm.control}
-                                                    name="description"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>{t('description')} ({t('optional')})</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea {...field} placeholder={t('ipSetDescriptionPlaceholder')} />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                                <FormField
-                                                    control={createIPSetForm.control}
-                                                    name="ips"
-                                                    render={({ field }) => {
-                                                        const ips: string[] = field.value || [];
-
-                                                        const handleIPChange = (index: number, value: string) => {
-                                                            const updated = [...ips];
-                                                            updated[index] = value;
-                                                            field.onChange(updated);
-                                                        };
-
-                                                        const handleAddIP = () => {
-                                                            field.onChange([...ips, ""]);
-                                                        };
-
-                                                        const handleRemoveIP = (index: number) => {
-                                                            field.onChange(ips.filter((_, i) => i !== index));
-                                                        };
-
-                                                        return (
-                                                            <FormItem>
-                                                                <FormLabel>{t('ipAddresses')}</FormLabel>
-                                                                <div className="space-y-2">
-                                                                    {ips.map((ip, index) => (
-                                                                        <div key={index} className="flex items-center space-x-2">
-                                                                            <Input
-                                                                                value={ip}
-                                                                                onChange={(e) => handleIPChange(index, e.target.value)}
-                                                                                placeholder="192.168.1.1 or 192.168.1.0/24"
-                                                                            />
-                                                                            <Button
-                                                                                type="button"
-                                                                                variant="outline"
-                                                                                onClick={() => handleRemoveIP(index)}
-                                                                            >
-                                                                                {t('remove')}
-                                                                            </Button>
-                                                                        </div>
-                                                                    ))}
-                                                                    <Button
-                                                                        type="button"
-                                                                        variant="secondary"
-                                                                        onClick={handleAddIP}
-                                                                    >
-                                                                        {t('addipaddress')}
-                                                                    </Button>
-                                                                </div>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        );
-                                                    }}
-                                                />
-
-                                                <div className="flex justify-end space-x-2">
-                                                    <Button type="button" variant="outline" onClick={() => setIPSetDialogOpen(false)}>
-                                                        {t('cancel')}
-                                                    </Button>
-                                                    <Button type="submit" loading={loading}>
-                                                        {t('create')}
-                                                    </Button>
-                                                </div>
-                                            </form>
-                                        </Form>
-                                    </DialogContent>
-                                </Dialog>
-                            </div>
-                        </div>
+                        {/* IP Sets Management - Now using modular component */}
+                        <IPSetManager
+                            orgId={orgId as string}
+                            t={t}
+                        />
 
                         <Separator />
 
@@ -1080,21 +741,13 @@ export default function ResourceRules(props: {
                                                 <FormItem>
                                                     <FormLabel>{t('ipSet')}</FormLabel>
                                                     <FormControl>
-                                                        <Select
+                                                        <IPSetSelector
+                                                            ipSets={ipSets}
                                                             value={field.value}
                                                             onValueChange={field.onChange}
-                                                        >
-                                                            <SelectTrigger className="w-full">
-                                                                <SelectValue placeholder={t('selectIPSet')} />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {ipSets.map((ipSet) => (
-                                                                    <SelectItem key={ipSet.id} value={ipSet.id}>
-                                                                        {ipSet.name}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
+                                                            placeholder={t('selectIPSet')}
+                                                            className="w-full"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -1189,35 +842,11 @@ export default function ResourceRules(props: {
                                         </TableRow>
                                     )}
                                 </TableBody>
-                                {/* <TableCaption> */}
-                                {/*     {t('rulesOrder')} */}
-                                {/* </TableCaption> */}
                             </Table>
                         </div>
                     </div>
                 </SettingsSectionBody>
             </SettingsSection>
-
-            {/* Edit IP Set Dialog */}
-            {ipSetToEdit && (
-                <Dialog open={!!ipSetToEdit} onOpenChange={() => setIPSetToEdit(null)}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{t('editIPSet')}</DialogTitle>
-                            <DialogDescription>
-                                {t('editIPSetDescription')}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <EditIPSetForm
-                            ipSet={ipSetToEdit}
-                            onSave={(data) => updateIPSet(ipSetToEdit.id, data)}
-                            onCancel={() => setIPSetToEdit(null)}
-                            loading={loading}
-                            t={t}
-                        />
-                    </DialogContent>
-                </Dialog>
-            )}
 
             {/* Save Button */}
             <div className="flex justify-end space-x-2">
