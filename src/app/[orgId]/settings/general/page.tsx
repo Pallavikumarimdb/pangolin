@@ -37,6 +37,8 @@ import {
 import { useUserContext } from "@app/hooks/useUserContext";
 import { useTranslations } from "next-intl";
 import { build } from "@server/build";
+import { useFormWithUnsavedChanges } from "@/hooks/useFormWithUnsavedChanges";
+import { UnsavedChangesIndicator } from "@/components/navigation-protection/unsaved-changes-indicator";
 
 // Updated schema to include subnet field
 const GeneralFormSchema = z.object({
@@ -67,6 +69,19 @@ export default function GeneralPage() {
         },
         mode: "onChange"
     });
+
+    // Add unsaved changes + persistence protection
+    const {
+        hasUnsavedChanges,
+        handleFormSubmit,
+        clearPersistence,
+    } = useFormWithUnsavedChanges({
+        form,
+        storageKey: `org-general-settings-${org?.org.orgId}`, // unique per org
+        excludeFields: [],
+        warningMessage: t("unsavedChangesWarning")
+    });
+
 
     async function deleteOrg() {
         setLoadingDelete(true);
@@ -131,6 +146,7 @@ export default function GeneralPage() {
                     title: t("orgUpdated"),
                     description: t("orgUpdatedDescription")
                 });
+                clearPersistence(); //  clear unsaved changes on successful save
                 router.refresh();
             })
             .catch((e) => {
@@ -178,10 +194,18 @@ export default function GeneralPage() {
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
                 <SettingsSectionBody>
+                    {/* Optional: Show unsaved changes alert */}
+                    {hasUnsavedChanges && (
+                        <UnsavedChangesIndicator
+                            hasUnsavedChanges={hasUnsavedChanges}
+                            variant="alert"
+                        />
+                    )}
+
                     <SettingsSectionForm>
                         <Form {...form}>
                             <form
-                                onSubmit={form.handleSubmit(onSubmit)}
+                                onSubmit={handleFormSubmit(onSubmit)} // ✅ wrapped submit
                                 className="space-y-4"
                                 id="org-settings-form"
                             >

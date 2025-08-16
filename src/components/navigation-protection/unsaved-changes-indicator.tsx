@@ -31,7 +31,7 @@ export function UnsavedChangesIndicator({
   if (variant === "alert") {
     return (
       <Alert variant="default" className={cn("mb-4", className)}>
-        <AlertCircle className="h-4 w-4" />
+        <AlertCircle className="h-4 w-4" color="red" />
         <AlertDescription className="flex items-center justify-between">
           <span>You have unsaved changes</span>
           {onSave && (
