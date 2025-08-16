@@ -1349,5 +1349,6 @@
     "siteAcceptClientConnections": "Accept Client Connections",
     "siteAcceptClientConnectionsDescription": "Allow other devices to connect through this Newt instance as a gateway using clients.",
     "siteAddress": "Site Address",
-    "siteAddressDescription": "Specify the IP address of the host for clients to connect to."
+    "siteAddressDescription": "Specify the IP address of the host for clients to connect to.",
+    "unsavedChangesWarning": "You have unsaved changes. Are you sure you want to leave?"
 }

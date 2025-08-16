@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Path, UseFormReturn } from "react-hook-form";
 import { NavigationGuard } from "@/utils/navigationGuard";
 
@@ -9,10 +9,12 @@ export function useFormPersistence<T extends Record<string, any>>(
 ) {
   const initialValues = useRef<T | null>(null);
   const navigationGuard = NavigationGuard.getInstance();
+  const [hasChanges, setHasChanges] = useState(false);
 
   // Restore saved form state
   useEffect(() => {
     const savedData = sessionStorage.getItem(storageKey);
+
     if (savedData) {
       try {
         const parsedData = JSON.parse(savedData) as Partial<T>;
@@ -24,10 +26,13 @@ export function useFormPersistence<T extends Record<string, any>>(
             }
           }
         });
+        setHasChanges(true);
+        navigationGuard.setHasUnsavedChanges(true);
       } catch (error) {
         console.warn("Failed to parse saved form data:", error);
       }
     }
+
     initialValues.current = form.getValues();
   }, [form, storageKey, excludeFields]);
 
@@ -42,7 +47,8 @@ export function useFormPersistence<T extends Record<string, any>>(
         sessionStorage.setItem(storageKey, JSON.stringify(dataToSave));
 
         const dirty = form.formState.isDirty;
-        navigationGuard.setHasUnsavedChanges(dirty);
+        setHasChanges(dirty || true); 
+        navigationGuard.setHasUnsavedChanges(dirty || true);
       }
     });
     return () => subscription.unsubscribe();
@@ -51,11 +57,9 @@ export function useFormPersistence<T extends Record<string, any>>(
   // Clear saved form state when saved
   const clearPersistence = () => {
     sessionStorage.removeItem(storageKey);
+    setHasChanges(false);
     navigationGuard.clearUnsavedChanges();
   };
 
-  // Return a function to check if form has changes
-  const hasChanges = () => form.formState.isDirty;
-
-  return { clearPersistence, hasChanges };
+  return { clearPersistence, hasChanges: () => hasChanges };
 }
