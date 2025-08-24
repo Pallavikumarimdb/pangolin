@@ -6,7 +6,8 @@ import {
     userResources,
     roleResources,
     resourcePassword,
-    resourcePincode
+    resourcePincode,
+    targets,
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -39,6 +40,51 @@ const listResourcesSchema = z.object({
         .pipe(z.number().int().nonnegative())
 });
 
+// (resource fields + a single joined target)
+type JoinedRow = {
+    resourceId: number;
+    name: string;
+    ssl: boolean;
+    fullDomain: string | null;
+    passwordId: number | null;
+    sso: boolean;
+    pincodeId: number | null;
+    whitelist: boolean;
+    http: boolean;
+    protocol: string;
+    proxyPort: number | null;
+    enabled: boolean;
+    domainId: string | null;
+
+    targetId: number | null;
+    targetIp: string | null;
+    targetPort: number | null;
+    targetEnabled: boolean | null;
+};
+
+// grouped by resource with targets[]) 
+export type ResourceWithTargets = {
+    resourceId: number;
+    name: string;
+    ssl: boolean;
+    fullDomain: string | null;
+    passwordId: number | null;
+    sso: boolean;
+    pincodeId: number | null;
+    whitelist: boolean;
+    http: boolean;
+    protocol: string;
+    proxyPort: number | null;
+    enabled: boolean;
+    domainId: string | null;
+    targets: Array<{
+        targetId: number;
+        ip: string;
+        port: number;
+        enabled: boolean;
+    }>;
+};
+
 function queryResources(accessibleResourceIds: number[], orgId: string) {
     return db
         .select({
@@ -54,7 +100,12 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             protocol: resources.protocol,
             proxyPort: resources.proxyPort,
             enabled: resources.enabled,
-            domainId: resources.domainId
+            domainId: resources.domainId,
+
+            targetId: targets.targetId,
+            targetIp: targets.ip,
+            targetPort: targets.port,
+            targetEnabled: targets.enabled,
         })
         .from(resources)
         .leftJoin(
@@ -65,6 +116,7 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             resourcePincode,
             eq(resourcePincode.resourceId, resources.resourceId)
         )
+        .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
         .where(
             and(
                 inArray(resources.resourceId, accessibleResourceIds),
@@ -74,7 +126,7 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
 }
 
 export type ListResourcesResponse = {
-    resources: NonNullable<Awaited<ReturnType<typeof queryResources>>>;
+    resources: ResourceWithTargets[];
     pagination: { total: number; limit: number; offset: number };
 };
 
@@ -139,7 +191,7 @@ export async function listResources(
             );
         }
 
-        let accessibleResources;
+        let accessibleResources: Array<{ resourceId: number }>;
         if (req.user) {
             accessibleResources = await db
                 .select({
@@ -176,9 +228,48 @@ export async function listResources(
 
         const baseQuery = queryResources(accessibleResourceIds, orgId);
 
-        const resourcesList = await baseQuery!.limit(limit).offset(offset);
+        const rows: JoinedRow[] = await baseQuery.limit(limit).offset(offset);
+
+        // avoids TS issues with reduce/never[]
+        const map = new Map<number, ResourceWithTargets>();
+
+        for (const row of rows) {
+            let entry = map.get(row.resourceId);
+            if (!entry) {
+                entry = {
+                    resourceId: row.resourceId,
+                    name: row.name,
+                    ssl: row.ssl,
+                    fullDomain: row.fullDomain,
+                    passwordId: row.passwordId,
+                    sso: row.sso,
+                    pincodeId: row.pincodeId,
+                    whitelist: row.whitelist,
+                    http: row.http,
+                    protocol: row.protocol,
+                    proxyPort: row.proxyPort,
+                    enabled: row.enabled,
+                    domainId: row.domainId,
+                    targets: [],
+                };
+                map.set(row.resourceId, entry);
+            }
+
+            // Push target if present (left join can be null)
+            if (row.targetId != null && row.targetIp && row.targetPort != null && row.targetEnabled != null) {
+                entry.targets.push({
+                    targetId: row.targetId,
+                    ip: row.targetIp,
+                    port: row.targetPort,
+                    enabled: row.targetEnabled,
+                });
+            }
+        }
+
+        const resourcesList: ResourceWithTargets[] = Array.from(map.values());
+
         const totalCountResult = await countQuery;
-        const totalCount = totalCountResult[0].count;
+        const totalCount = totalCountResult[0]?.count ?? 0;
 
         return response<ListResourcesResponse>(res, {
             data: {
