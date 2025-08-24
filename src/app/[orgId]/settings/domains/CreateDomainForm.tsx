@@ -59,7 +59,7 @@ function toPunycode(domain: string): string {
 
 function fromPunycode(domain: string): string {
     try {
-        const parts = toUnicode(domain)
+        const parts = toUnicode(domain);
         return parts;
     } catch (error) {
         return domain;
