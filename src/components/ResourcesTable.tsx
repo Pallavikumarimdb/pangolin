@@ -9,13 +9,16 @@ import {
     SortingState,
     getSortedRowModel,
     ColumnFiltersState,
-    getFilteredRowModel
+    getFilteredRowModel,
+    VisibilityState
 } from "@tanstack/react-table";
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuTrigger
+    DropdownMenuTrigger,
+    DropdownMenuCheckboxItem,
+    DropdownMenuSeparator
 } from "@app/components/ui/dropdown-menu";
 import { Button } from "@app/components/ui/button";
 import {
@@ -25,7 +28,14 @@ import {
     ArrowUpRight,
     ShieldOff,
     ShieldCheck,
-    RefreshCw
+    RefreshCw,
+    Settings2,
+    Wifi,
+    WifiOff,
+    Clock,
+    Plus,
+    Search,
+    ChevronDown,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,7 +54,6 @@ import { useTranslations } from "next-intl";
 import { InfoPopup } from "@app/components/ui/info-popup";
 import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
-import { Plus, Search } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@app/components/ui/card";
 import {
     Table,
@@ -64,6 +73,14 @@ import { useSearchParams } from "next/navigation";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
+import { Badge } from "@app/components/ui/badge";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "@app/components/ui/tooltip";
+import { useResourceHealth } from "@app/hooks/useResourceHealth";
 
 export type ResourceRow = {
     id: number;
@@ -78,6 +95,8 @@ export type ResourceRow = {
     enabled: boolean;
     domainId?: string;
     ssl: boolean;
+    targetHost?: string;
+    targetPort?: number;
 };
 
 export type InternalResourceRow = {
@@ -143,6 +162,25 @@ const setStoredPageSize = (pageSize: number, tableId?: string): void => {
 };
 
 
+function StatusIcon({ status, className = "" }: {
+    status: 'checking' | 'online' | 'offline' | undefined;
+    className?: string;
+}) {
+    const iconClass = `h-4 w-4 ${className}`;
+
+    switch (status) {
+        case 'checking':
+            return <Clock className={`${iconClass} text-yellow-500 animate-pulse`} />;
+        case 'online':
+            return <Wifi className={`${iconClass} text-green-500`} />;
+        case 'offline':
+            return <WifiOff className={`${iconClass} text-red-500`} />;
+        default:
+            return null;
+    }
+}
+
+
 export default function ResourcesTable({
     resources,
     internalResources,
@@ -158,12 +196,16 @@ export default function ResourcesTable({
 
     const api = createApiClient({ env });
 
+
     const [proxyPageSize, setProxyPageSize] = useState<number>(() =>
         getStoredPageSize('proxy-resources', 20)
     );
     const [internalPageSize, setInternalPageSize] = useState<number>(() =>
         getStoredPageSize('internal-resources', 20)
     );
+
+    const { resourceStatus, targetStatus } = useResourceHealth(orgId, resources);
+
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] =
@@ -179,6 +221,10 @@ export default function ResourcesTable({
     const [proxySorting, setProxySorting] = useState<SortingState>(
         defaultSort ? [defaultSort] : []
     );
+
+    const [proxyColumnVisibility, setProxyColumnVisibility] = useState<VisibilityState>({});
+    const [internalColumnVisibility, setInternalColumnVisibility] = useState<VisibilityState>({});
+
     const [proxyColumnFilters, setProxyColumnFilters] =
         useState<ColumnFiltersState>([]);
     const [proxyGlobalFilter, setProxyGlobalFilter] = useState<any>([]);
@@ -269,6 +315,39 @@ export default function ResourcesTable({
                 />
                 <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             </div>
+        );
+    };
+
+    const getColumnToggle = () => {
+        const table = currentView === "internal" ? internalTable : proxyTable;
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                        <Settings2 className="mr-2 h-4 w-4" />
+                        {t("columns")}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                    {table.getAllColumns()
+                        .filter(column => column.getCanHide())
+                        .map(column => (
+                            <DropdownMenuCheckboxItem
+                                key={column.id}
+                                className="capitalize"
+                                checked={column.getIsVisible()}
+                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                            >
+                                {column.id === "target" ? t("target") :
+                                    column.id === "authState" ? t("authentication") :
+                                        column.id === "enabled" ? t("enabled") :
+                                            column.id === "status" ? t("status") :
+                                                column.id}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
         );
     };
 
@@ -388,6 +467,126 @@ export default function ResourcesTable({
             cell: ({ row }) => {
                 const resourceRow = row.original;
                 return <span>{resourceRow.http ? (resourceRow.ssl ? "HTTPS" : "HTTP") : resourceRow.protocol.toUpperCase()}</span>;
+            }
+        },
+        {
+            id: "target",
+            accessorKey: "target",
+            header: ({ column }) => {
+                return (
+                    <Button
+                        variant="ghost"
+                        onClick={() =>
+                            column.toggleSorting(column.getIsSorted() === "asc")
+                        }
+                    >
+                        {t("target")}
+                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                    </Button>
+                );
+            },
+            cell: ({ row }) => {
+                const resourceRow = row.original as ResourceRow & {
+                    targets?: { host: string; port: number }[];
+                };
+
+                const targets = resourceRow.targets ?? [];
+
+                if (targets.length === 0) {
+                    return <span className="text-muted-foreground">-</span>;
+                }
+
+                const count = targets.length;
+
+                return (
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="flex items-center"
+                            >
+                                <ChevronDown className="h-4 w-4 mr-1" />
+                                {`${count} Configurations`}
+                            </Button>
+                        </DropdownMenuTrigger>
+
+                        <DropdownMenuContent align="start" className="min-w-[200px]">
+                            {targets.map((target, idx) => {
+                                const key = `${resourceRow.id}:${target.host}:${target.port}`;
+                                const status = targetStatus[key];
+
+                                const color =
+                                    status === "online"
+                                        ? "bg-green-500"
+                                        : status === "offline"
+                                            ? "bg-red-500 "
+                                            : "bg-gray-400";
+
+                                return (
+                                    <DropdownMenuItem key={idx} className="flex items-center gap-2">
+                                        <div className={`h-3 w-3 rounded-full ${color}`} />
+                                        <CopyToClipboard
+                                            text={`${target.host}:${target.port}`}
+                                            isLink={false}
+                                        />
+                                    </DropdownMenuItem>
+                                );
+                            })}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                );
+            },
+        },
+        {
+            id: "status",
+            accessorKey: "status",
+            header: t("status"),
+            cell: ({ row }) => {
+                const resourceRow = row.original;
+                const status = resourceStatus[resourceRow.id];
+
+                if (!resourceRow.enabled) {
+                    return (
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger>
+                                    <Badge variant="secondary" className="">
+                                        {t("disabled")}
+                                    </Badge>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{t("resourceDisabled")}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    );
+                }
+
+                return (
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <div className="flex items-center space-x-2">
+                                    <StatusIcon status={status} />
+                                    <span className=" capitalize">
+                                        {status === 'checking' ? t("checking") :
+                                            status === 'online' ? t("online") :
+                                                status === 'offline' ? t("offline") : '-'}
+                                    </span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>
+                                    {status === 'checking' ? t("checkingConnection") :
+                                        status === 'online' ? t("connectionSuccessful") :
+                                            status === 'offline' ? t("connectionFailed") :
+                                                t("statusUnknown")}
+                                </p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                );
             }
         },
         {
@@ -647,6 +846,7 @@ export default function ResourcesTable({
         onColumnFiltersChange: setProxyColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
         onGlobalFilterChange: setProxyGlobalFilter,
+        onColumnVisibilityChange: setProxyColumnVisibility,
         initialState: {
             pagination: {
                 pageSize: proxyPageSize,
@@ -656,7 +856,8 @@ export default function ResourcesTable({
         state: {
             sorting: proxySorting,
             columnFilters: proxyColumnFilters,
-            globalFilter: proxyGlobalFilter
+            globalFilter: proxyGlobalFilter,
+            columnVisibility: proxyColumnVisibility
         }
     });
 
@@ -670,6 +871,7 @@ export default function ResourcesTable({
         onColumnFiltersChange: setInternalColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
         onGlobalFilterChange: setInternalGlobalFilter,
+        onColumnVisibilityChange: setInternalColumnVisibility,
         initialState: {
             pagination: {
                 pageSize: internalPageSize,
@@ -679,7 +881,8 @@ export default function ResourcesTable({
         state: {
             sorting: internalSorting,
             columnFilters: internalColumnFilters,
-            globalFilter: internalGlobalFilter
+            globalFilter: internalGlobalFilter,
+            columnVisibility: internalColumnVisibility
         }
     });
 
@@ -784,6 +987,7 @@ export default function ResourcesTable({
                                     </Button>
                                 </div>
                                 <div>
+                                    {getColumnToggle()}
                                     {getActionButton()}
                                 </div>
                             </div>
