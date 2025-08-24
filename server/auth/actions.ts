@@ -23,6 +23,8 @@ export enum ActionsEnum {
     deleteResource = "deleteResource",
     getResource = "getResource",
     listResources = "listResources",
+    tcpCheck = "tcpCheck",
+    batchTcpCheck = "batchTcpCheck",
     updateResource = "updateResource",
     createTarget = "createTarget",
     deleteTarget = "deleteTarget",
