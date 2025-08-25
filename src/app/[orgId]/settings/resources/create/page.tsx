@@ -58,7 +58,7 @@ import {
 } from "@app/components/ui/popover";
 import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
 import { cn } from "@app/lib/cn";
-import { SquareArrowOutUpRight } from "lucide-react";
+import { PlusCircle, SquareArrowOutUpRight, Star, Trash2 } from "lucide-react";
 import CopyTextBox from "@app/components/CopyTextBox";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -91,16 +91,19 @@ import { DockerManager, DockerState } from "@app/lib/docker";
 import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { toASCII, toUnicode } from 'punycode';
 import { DomainRow } from "../../domains/DomainsTable";
+import { Label } from "@app/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
+import { Card } from "@app/components/ui/card";
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
     http: z.boolean()
 });
 
-const httpResourceFormSchema = z.object({
-    domainId: z.string().nonempty(),
-    subdomain: z.string().optional()
-});
+// const httpResourceFormSchema = z.object({
+//     domainId: z.string().nonempty(),
+//     subdomain: z.string().optional()
+// });
 
 const tcpUdpResourceFormSchema = z.object({
     protocol: z.string(),
@@ -115,11 +118,28 @@ const addTargetSchema = z.object({
     siteId: z.number().int().positive()
 });
 
+const hostnameSchema = z.object({
+    domainId: z.string().nonempty(),
+    subdomain: z.string().optional(),
+    baseDomain: z.string().optional(),
+    fullDomain: z.string().optional(),
+    primary: z.boolean().default(false),
+});
+
+const httpResourceFormSchema = z.object({
+    domainId: z.string().nonempty(),
+    subdomain: z.string().optional(),
+    hostMode: z.enum(["multi", "redirect"]).default("multi")
+});
+
+
 type BaseResourceFormValues = z.infer<typeof baseResourceFormSchema>;
 type HttpResourceFormValues = z.infer<typeof httpResourceFormSchema>;
 type TcpUdpResourceFormValues = z.infer<typeof tcpUdpResourceFormSchema>;
 
 type ResourceType = "http" | "raw";
+type HostMode = "multi" | "redirect";
+
 
 interface ResourceTypeOption {
     id: ResourceType;
@@ -136,6 +156,16 @@ type LocalTarget = Omit<
     },
     "protocol"
 >;
+
+export type HostnameEntry = {
+    id: string;
+    domainId: string;
+    subdomain?: string;
+    fullDomain: string;
+    baseDomain: string;
+    primary: boolean;
+};
+
 
 export default function Page() {
     const { env } = useEnvContext();
@@ -314,6 +344,50 @@ export default function Page() {
         );
     }
 
+    const [hostnames, setHostnames] = useState<HostnameEntry[]>([]);
+    const [hostMode, setHostMode] = useState<HostMode>("multi");
+
+    useEffect(() => {
+        if (baseForm.watch("http") && hostnames.length === 0) {
+            addHostname();
+        }
+    }, [baseForm.watch("http")]);
+
+
+    const addHostname = () => {
+        setHostnames((prev) => [
+            ...prev,
+            {
+                id: crypto.randomUUID(),
+                domainId: "",
+                subdomain: "",
+                fullDomain: "",
+                baseDomain: "",
+                primary: prev.length === 0,
+            },
+        ]);
+    };
+
+    const removeHostname = (id: string) => {
+        setHostnames((prev) => {
+            const filtered = prev.filter((h) => h.id !== id);
+            if (filtered.length > 0 && !filtered.some((h) => h.primary)) {
+                filtered[0].primary = true;
+            }
+            return filtered;
+        });
+    };
+
+    const setPrimary = (id: string) => {
+        setHostnames((prev) => prev.map((h) => ({ ...h, primary: h.id === id })));
+    };
+
+    const updateHostname = (id: string, updated: Partial<HostnameEntry>) => {
+        setHostnames((prev) =>
+            prev.map((h) => (h.id === id ? { ...h, ...updated } : h))
+        );
+    };
+
     async function onSubmit() {
         setCreateLoading(true);
 
@@ -321,16 +395,64 @@ export default function Page() {
         const isHttp = baseData.http;
 
         try {
-            const payload = {
+            if (isHttp) {
+                if (hostnames.length === 0) {
+                    toast({
+                        variant: "destructive",
+                        title: t("resourceErrorCreate"),
+                        description: "Please add at least one domain before creating the resource."
+                    });
+                    setCreateLoading(false);
+                    return;
+                }
+
+                const incomplete = hostnames.find(h => !h.domainId || !h.fullDomain);
+                if (incomplete) {
+                    toast({
+                        variant: "destructive",
+                        title: t("resourceErrorCreate"),
+                        description: "One or more domains are incomplete. Please select a base domain (and subdomain if required)."
+                    });
+                    setCreateLoading(false);
+                    return;
+                }
+
+                const primaryCount = hostnames.filter(h => h.primary).length;
+                if (primaryCount !== 1) {
+                    toast({
+                        variant: "destructive",
+                        title: t("resourceErrorCreate"),
+                        description: "Please mark exactly one domain as Primary."
+                    });
+                    setCreateLoading(false);
+                    return;
+                }
+            }
+
+            const payload: any = {
                 name: baseData.name,
                 http: baseData.http
             };
 
             if (isHttp) {
                 const httpData = httpForm.getValues();
+
+                // Build multi-host payload from state
+                const primary = hostnames.find(h => h.primary)!;
+                const hostnamesPayload = hostnames.map(h => ({
+                    domainId: h.domainId,
+                    subdomain: h.subdomain || undefined,
+                    baseDomain: h.baseDomain,
+                    fullDomain: h.fullDomain,
+                    primary: h.primary
+                }));
+
+                // Legacy + new fields
                 Object.assign(payload, {
-                    subdomain: httpData.subdomain ? toASCII(httpData.subdomain) : undefined,
-                    domainId: httpData.domainId,
+                    subdomain: primary.subdomain ? toASCII(primary.subdomain) : undefined,
+                    domainId: primary.domainId,
+                    hostMode: (httpData.hostMode ?? hostMode) as "multi" | "redirect",
+                    hostnames: hostnamesPayload,
                     protocol: "tcp"
                 });
             } else {
@@ -821,23 +943,111 @@ export default function Page() {
                                         </SettingsSectionDescription>
                                     </SettingsSectionHeader>
                                     <SettingsSectionBody>
-                                        <DomainPicker
-                                            orgId={orgId as string}
-                                            onDomainChange={(res) => {
-                                                httpForm.setValue(
-                                                    "subdomain",
-                                                    res.subdomain
-                                                );
-                                                httpForm.setValue(
-                                                    "domainId",
-                                                    res.domainId
-                                                );
-                                                console.log(
-                                                    "Domain changed:",
-                                                    res
-                                                );
-                                            }}
-                                        />
+                                        <div className="space-y-3">
+                                            <Label className="text-sm font-medium text-gray-400">
+                                                Domain Handling Mode
+                                            </Label>
+                                            <RadioGroup
+                                                value={hostMode}
+                                                onValueChange={(val: HostMode) => {
+                                                    setHostMode(val);
+                                                    httpForm.setValue("hostMode", val);
+                                                }}
+                                                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                                            >
+                                                <label
+                                                    htmlFor="multi"
+                                                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition hover:bg-muted"
+                                                >
+                                                    <RadioGroupItem id="multi" value="multi" />
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">Multi-Domain Mode</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Allow multiple domains to serve this resource
+                                                        </span>
+                                                    </div>
+                                                </label>
+
+                                                <label
+                                                    htmlFor="redirect"
+                                                    className="flex items-center gap-3 rounded-lg border p-3 cursor-pointer transition hover:bg-muted"
+                                                >
+                                                    <RadioGroupItem id="redirect" value="redirect" />
+                                                    <div className="flex flex-col">
+                                                        <span className="font-medium">Primary Domain Redirect</span>
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Redirect all other domains to the primary one
+                                                        </span>
+                                                    </div>
+                                                </label>
+                                            </RadioGroup>
+                                        </div>
+
+                                        <div className="space-y-4 mt-6">
+                                            <Label className="text-sm font-medium text-gray-400">
+                                                Assigned Domains
+                                            </Label>
+
+                                            <div className="space-y-3">
+                                                {hostnames.map((h) => (
+                                                    <Card
+                                                        key={h.id}
+                                                        className="p-4"
+                                                    >
+                                                        <DomainPicker
+                                                            orgId={orgId as string}
+                                                            onDomainChange={(res) => {
+                                                                httpForm.setValue("subdomain", res.subdomain);
+                                                                httpForm.setValue("domainId", res.domainId);
+
+                                                                updateHostname(h.id, {
+                                                                    domainId: res.domainId,
+                                                                    subdomain: res.subdomain,
+                                                                    fullDomain: res.fullDomain,
+                                                                    baseDomain: res.baseDomain,
+                                                                });
+                                                            }}
+                                                        />
+
+                                                        <div className="flex justify-between items-center pt-3">
+                                                            <Button
+                                                                size="sm"
+                                                                variant={h.primary ? "default" : "outline"}
+                                                                onClick={() => setPrimary(h.id)}
+                                                                className="flex items-center gap-1"
+                                                            >
+                                                                <Star
+                                                                    className={cn(
+                                                                        "h-4 w-4",
+                                                                        h.primary ? "fill-yellow-400 text-yellow-400" : ""
+                                                                    )}
+                                                                />
+                                                                {h.primary ? "Primary Domain" : "Set as Primary"}
+                                                            </Button>
+
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                onClick={() => removeHostname(h.id)}
+                                                                disabled={hostnames.length === 1}
+                                                                className="text-red-500 hover:text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
+                                                    </Card>
+                                                ))}
+                                            </div>
+
+                                            <Button
+                                                onClick={addHostname}
+                                                variant="outline"
+                                                className="w-full flex items-center justify-center gap-2"
+                                            >
+                                                <PlusCircle className="h-4 w-4" />
+                                                Add Another Domain
+                                            </Button>
+                                        </div>
                                     </SettingsSectionBody>
                                 </SettingsSection>
                             ) : (
