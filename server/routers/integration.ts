@@ -413,12 +413,6 @@ authenticated.get(
     resource.getResourceWhitelist
 );
 
-authenticated.post(
-    `/resource/:resourceId/transfer`,
-    verifyApiKeyResourceAccess,
-    verifyApiKeyHasAction(ActionsEnum.updateResource),
-    resource.transferResource
-);
 
 authenticated.post(
   `/resource/:resourceId/move-org`,
