@@ -44,7 +44,6 @@ registry.registerPath({
     responses: {}
 });
 
-// Type definitions
 type ResourceTarget = {
     targetId: number;
     siteId: number | null;
@@ -91,7 +90,7 @@ async function cleanupResourcePermissions(
             .where(eq(roleResources.resourceId, resourceId))
             .returning();
 
-        // Remove all user permissions except the moving user
+        // remove all user permissions except the moving user
         const deletedUserResources = await tx
             .delete(userResources)
             .where(and(
