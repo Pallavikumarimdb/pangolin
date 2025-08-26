@@ -495,13 +495,6 @@ authenticated.get(
 );
 
 authenticated.post(
-    `/resource/:resourceId/transfer`,
-    verifyResourceAccess,
-    verifyUserHasAction(ActionsEnum.updateResource),
-    resource.transferResource
-);
-
-authenticated.post(
   `/resource/:resourceId/move-org`,
   verifyResourceAccess,
   verifyUserHasAction(ActionsEnum.updateResource),
