@@ -8,9 +8,11 @@ import {
     userResources, 
     roleResources,
     roles,
-    users
+    users,
+    targets,
+    sites
 } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -83,6 +85,26 @@ registry.registerPath({
                                                                 userId: { type: "string" },
                                                                 username: { type: "string" },
                                                                 email: { type: "string" }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            },
+                                            targetSites: {
+                                                type: "object",
+                                                properties: {
+                                                    count: { type: "number" },
+                                                    details: {
+                                                        type: "array",
+                                                        items: {
+                                                            type: "object",
+                                                            properties: {
+                                                                siteId: { type: "number" },
+                                                                siteName: { type: "string" },
+                                                                targetId: { type: "number" },
+                                                                ip: { type: "string" },
+                                                                port: { type: "number" },
+                                                                willBeRemoved: { type: "boolean" }
                                                             }
                                                         }
                                                     }
@@ -202,11 +224,33 @@ export async function getMoveImpact(
             })
             .from(userResources)
             .innerJoin(users, eq(userResources.userId, users.userId))
-            .where(and(
-                eq(userResources.resourceId, resourceId),
-                // exclude the moving user from the impact as they'll retain access
-                // Note: We'll show this in the UI but they won't "lose" access
-            ));
+            .where(eq(userResources.resourceId, resourceId));
+
+        // Get targets and their associated sites
+        const resourceTargets = await db
+            .select({
+                targetId: targets.targetId,
+                siteId: targets.siteId,
+                ip: targets.ip,
+                port: targets.port,
+                siteName: sites.name,
+                siteOrgId: sites.orgId
+            })
+            .from(targets)
+            .leftJoin(sites, eq(targets.siteId, sites.siteId))
+            .where(eq(targets.resourceId, resourceId));
+
+        // Analyze which targets will be affected
+        const affectedTargetSites = resourceTargets
+            .filter(target => target.siteId && target.siteOrgId !== targetOrgId)
+            .map(target => ({
+                siteId: target.siteId!,
+                siteName: target.siteName || 'Unknown',
+                targetId: target.targetId,
+                ip: target.ip,
+                port: target.port,
+                willBeRemoved: true // Sites from different orgs will lose connection
+            }));
 
         // Separate moving user from others who will lose access
         const movingUserPermission = userPermissionsQuery.find(up => up.userId === user.userId);
@@ -239,6 +283,10 @@ export async function getMoveImpact(
                         name: up.name || ''
                     }))
                 },
+                targetSites: {
+                    count: affectedTargetSites.length,
+                    details: affectedTargetSites
+                },
                 movingUser: movingUserPermission ? {
                     userId: movingUserPermission.userId,
                     username: movingUserPermission.username,
@@ -259,6 +307,7 @@ export async function getMoveImpact(
             userId: user.userId,
             rolePermissionsAffected: rolePermissionsQuery.length,
             userPermissionsAffected: otherUserPermissions.length,
+            targetSitesAffected: affectedTargetSites.length,
             totalImpact: totalImpactedPermissions
         });
 

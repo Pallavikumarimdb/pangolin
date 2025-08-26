@@ -9,7 +9,8 @@ import {
     Users,
     Shield,
     Check,
-    ArrowRight
+    ArrowRight,
+    Unplug
 } from "lucide-react";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import CopyToClipboard from "@app/components/CopyToClipboard";
@@ -42,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { RotateCw } from "lucide-react";
 import { createApiClient } from "@app/lib/api";
 import { build } from "@server/build";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@app/components/ui/accordion";
 
 type ResourceInfoBoxType = {
     orgs: ResponseOrg[];
@@ -75,6 +77,17 @@ type MoveImpact = {
                 username: string;
                 email: string;
                 name: string;
+            }[];
+        };
+        targetSites: {
+            count: number;
+            details: {
+                siteId: number;
+                siteName: string;
+                targetId: number;
+                ip: string;
+                port: number;
+                willBeRemoved: boolean;
             }[];
         };
         movingUser: {
@@ -134,11 +147,19 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
             });
         }
 
-        if (impact.totalImpactedPermissions === 0) {
+        if (impact.targetSites.count > 0) {
+            warnings.push({
+                type: 'warning',
+                icon: <Unplug className="w-4 h-4" />,
+                message: `${impact.targetSites.count} target connection${impact.targetSites.count > 1 ? 's' : ''} will be disconnected`
+            });
+        }
+
+        if (impact.totalImpactedPermissions === 0 && impact.targetSites.count === 0) {
             warnings.push({
                 type: 'info',
                 icon: <InfoIcon className="w-4 h-4" />,
-                message: 'No existing permissions will be affected'
+                message: 'No existing permissions or connections will be affected'
             });
         }
 
@@ -192,6 +213,7 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
                 impact: {
                     rolePermissions: { count: 0, details: [] },
                     userPermissions: { count: 0, details: [] },
+                    targetSites: { count: 0, details: [] },
                     movingUser: null,
                     totalImpactedPermissions: 0,
                     authenticationPreserved: true,
@@ -245,6 +267,7 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
                     `Moved to: ${moveData.targetOrgName}\n` +
                     `Role permissions removed: ${moveData.moveImpact.rolePermissionsRemoved}\n` +
                     `User permissions removed: ${moveData.moveImpact.userPermissionsRemoved}\n` +
+                    `Target connections disconnected: ${moveData.moveImpact.targetsDisconnected}\n` +
                     `Authentication settings preserved: ${moveData.moveImpact.authenticationPreserved ? 'Yes' : 'No'}\n\n` +
                     `Redirecting to the new organization...`
                 );
@@ -267,7 +290,7 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
     return (
         <Alert>
             <AlertDescription className="mt-4">
-                <InfoSections cols={5}>
+                <InfoSections cols={4}>
                     {resource.http ? (
                         <>
                             <InfoSection>
@@ -411,89 +434,135 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
                                         </Button>
                                     </DialogTrigger>
 
-                                    <DialogContent className="max-w-md">
+                                    <DialogContent className="max-h-[85vh] overflow-y-auto p-6">
                                         <DialogHeader>
-                                            <DialogTitle className="flex items-center gap-2">
+                                            <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
                                                 <ArrowRight className="w-5 h-5" />
                                                 Move Resource to {selectedOrgName}?
                                             </DialogTitle>
                                             <DialogDescription>
-                                                This will move "{resource.name}" from {moveImpact?.currentOrgName || 'current organization'} to {moveImpact?.targetOrgName || selectedOrgName}.
+                                                This will move <span className="font-medium">"{resource.name}"</span>
+                                                from <span className="font-medium">{moveImpact?.currentOrgName || 'current organization'}</span>
+                                                to <span className="font-medium">{moveImpact?.targetOrgName || selectedOrgName}</span>.
                                                 Please review the impact below.
                                             </DialogDescription>
                                         </DialogHeader>
 
-                                        <div className="space-y-4">
+                                        <div className="space-y-6 mt-4">
                                             {warnings.length > 0 && (
-                                                <Alert variant={warnings.some(w => w.type === 'danger') ? 'destructive' : 'default'}>
-                                                    <AlertTriangle className="h-4 w-4" />
-                                                    <AlertTitle>Impact Summary</AlertTitle>
-                                                    <AlertDescription>
-                                                        <ul className="space-y-2 mt-2">
-                                                            {warnings.map((warning, idx) => (
-                                                                <li key={idx} className="flex items-start gap-2">
-                                                                    <span className={`
-                                                                        ${warning.type === 'warning' ? 'text-yellow-600' :
-                                                                            warning.type === 'danger' ? 'text-red-600' :
-                                                                                'text-blue-600'}
-                                                                    `}>
-                                                                        {warning.icon}
-                                                                    </span>
-                                                                    <span className="text-sm">{warning.message}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </AlertDescription>
+                                                <Alert
+                                                    variant={
+                                                        warnings.some((w) => w.type === "danger") ? "destructive" : "default"
+                                                    }
+                                                >
+                                                    <div className="flex items-start gap-3">
+                                                        <AlertTriangle className="h-5 w-5 mt-1" />
+                                                        <div>
+                                                            <AlertTitle className="font-semibold">Impact Summary</AlertTitle>
+                                                            <AlertDescription>
+                                                                <ul className="space-y-2 mt-2">
+                                                                    {warnings.map((warning, idx) => (
+                                                                        <li key={idx} className="flex items-start gap-2">
+                                                                            <span
+                                                                                className={`
+                                                                                    ${warning.type === "warning"
+                                                                                        ? "text-yellow-600"
+                                                                                        : warning.type === "danger"
+                                                                                            ? "text-red-600"
+                                                                                            : "text-blue-600"}
+                                                                                            `}
+                                                                            >
+                                                                                {warning.icon}
+                                                                            </span>
+                                                                            <span className="text-sm">{warning.message}</span>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </AlertDescription>
+                                                        </div>
+                                                    </div>
                                                 </Alert>
                                             )}
 
-                                            {moveImpact && (moveImpact.impact.rolePermissions.count > 0 || moveImpact.impact.userPermissions.count > 0) && (
-                                                <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                                                    <h4 className="font-medium text-yellow-800 mb-3 flex items-center gap-2">
-                                                        <AlertTriangle className="w-4 h-4" />
-                                                        Detailed Impact:
-                                                    </h4>
-                                                    {moveImpact.impact.rolePermissions.count > 0 && (
-                                                        <div className="mb-3">
-                                                            <p className="text-sm font-medium text-yellow-700 mb-1">
-                                                                Roles that will lose access ({moveImpact.impact.rolePermissions.count}):
-                                                            </p>
-                                                            <ul className="text-sm text-yellow-600 ml-4 space-y-1">
-                                                                {moveImpact.impact.rolePermissions.details.map((role, idx) => (
-                                                                    <li key={idx} className="flex items-start gap-2">
-                                                                        <span>•</span>
-                                                                        <span>{role.roleName}</span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    )}
+                                            {moveImpact && (
+                                                <div className="rounded-lg border bg-yellow-100 border-yellow-200">
+                                                    <Accordion type="single" collapsible>
+                                                        <AccordionItem value="impact">
+                                                            <AccordionTrigger className="px-4 py-3 text-yellow-900 font-medium flex items-center gap-2">
+                                                                <AlertTriangle className="w-4 h-4" />
+                                                                Detailed Impact
+                                                            </AccordionTrigger>
+                                                            <AccordionContent className="px-4 pb-4 space-y-4">
+                                                                {moveImpact.impact.rolePermissions.count > 0 && (
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-yellow-800 mb-1">
+                                                                            Roles that will lose access (
+                                                                            {moveImpact.impact.rolePermissions.count}):
+                                                                        </p>
+                                                                        <ul className="text-sm text-yellow-700 ml-4 space-y-1">
+                                                                            {moveImpact.impact.rolePermissions.details.map(
+                                                                                (role, idx) => (
+                                                                                    <li key={idx} className="flex items-start gap-2">
+                                                                                        <span>•</span>
+                                                                                        <span>{role.roleName}</span>
+                                                                                    </li>
+                                                                                )
+                                                                            )}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
 
-                                                    {moveImpact.impact.userPermissions.count > 0 && (
-                                                        <div>
-                                                            <p className="text-sm font-medium text-yellow-700 mb-1">
-                                                                Users that will lose access ({moveImpact.impact.userPermissions.count}):
-                                                            </p>
-                                                            <ul className="text-sm text-yellow-600 ml-4 space-y-1">
-                                                                {moveImpact.impact.userPermissions.details.map((user, idx) => (
-                                                                    <li key={idx} className="flex items-start gap-2">
-                                                                        <span>•</span>
-                                                                        <span>
-                                                                            {user.name || user.username}
-                                                                            {user.email && ` (${user.email})`}
-                                                                        </span>
-                                                                    </li>
-                                                                ))}
-                                                            </ul>
-                                                        </div>
-                                                    )}
+                                                                {moveImpact.impact.userPermissions.count > 0 && (
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-yellow-800 mb-1">
+                                                                            Users that will lose access (
+                                                                            {moveImpact.impact.userPermissions.count}):
+                                                                        </p>
+                                                                        <ul className="text-sm text-yellow-700 ml-4 space-y-1">
+                                                                            {moveImpact.impact.userPermissions.details.map(
+                                                                                (user, idx) => (
+                                                                                    <li key={idx} className="flex items-start gap-2">
+                                                                                        <span>•</span>
+                                                                                        <span>
+                                                                                            {user.name || user.username}
+                                                                                            {user.email && ` (${user.email})`}
+                                                                                        </span>
+                                                                                    </li>
+                                                                                )
+                                                                            )}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+
+                                                                {moveImpact.impact.targetSites.count > 0 && (
+                                                                    <div>
+                                                                        <p className="text-sm font-medium text-yellow-900 mb-1">
+                                                                            Target connections that will be disconnected (
+                                                                            {moveImpact.impact.targetSites.count}):
+                                                                        </p>
+                                                                        <ul className="text-sm text-yellow-700 ml-4 space-y-1">
+                                                                            {moveImpact.impact.targetSites.details.map((target, idx) => (
+                                                                                <li key={idx} className="flex items-start gap-2">
+                                                                                    <span>•</span>
+                                                                                    <span>
+                                                                                        {target.siteName} ({target.ip}:{target.port})
+                                                                                    </span>
+                                                                                </li>
+                                                                            ))}
+                                                                        </ul>
+                                                                    </div>
+                                                                )}
+                                                            </AccordionContent>
+                                                        </AccordionItem>
+                                                    </Accordion>
                                                 </div>
                                             )}
 
+                                            {/* Preserved Items */}
                                             <div className="bg-green-50 border border-green-200 rounded-md p-4">
                                                 <h4 className="font-medium text-green-800 mb-2 flex items-center gap-2">
                                                     <Check className="w-4 h-4" />
-                                                    What will be preserved:
+                                                    What will be preserved
                                                 </h4>
                                                 <ul className="text-sm space-y-1 text-green-700">
                                                     {preservedItems.map((item, idx) => (
@@ -506,7 +575,8 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
                                             </div>
                                         </div>
 
-                                        <DialogFooter>
+                                        {/* Sticky Footer */}
+                                        <DialogFooter className="sticky -bottom-6 pb-4 bg-background border-t pt-3">
                                             <Button
                                                 variant="outline"
                                                 onClick={() => setShowConfirmDialog(false)}
@@ -525,11 +595,12 @@ export default function ResourceInfoBox({ orgs }: ResourceInfoBoxType) {
                                                         Moving...
                                                     </>
                                                 ) : (
-                                                    'Confirm Move'
+                                                    "Confirm Move"
                                                 )}
                                             </Button>
                                         </DialogFooter>
                                     </DialogContent>
+
                                 </Dialog>
                             </div>
                         </InfoSectionContent>
