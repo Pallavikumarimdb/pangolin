@@ -7,6 +7,7 @@ import {
     orgs,
     Resource,
     resources,
+    resourceHostnames,
     roleResources,
     roles,
     userResources
@@ -28,13 +29,24 @@ const createResourceParamsSchema = z
     })
     .strict();
 
+
+const hostnameSchema = z.object({
+    domainId: z.string().nonempty(),
+    subdomain: z.string().optional(),
+    baseDomain: z.string().optional(),
+    fullDomain: z.string().optional(),
+    primary: z.boolean().default(false),
+});
+
 const createHttpResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
         subdomain: z.string().nullable().optional(),
         http: z.boolean(),
         protocol: z.enum(["tcp", "udp"]),
-        domainId: z.string()
+        domainId: z.string().optional(), 
+        hostMode: z.enum(["multi", "redirect"]).default("multi"),
+        hostnames: z.array(hostnameSchema).optional(),
     })
     .strict()
     .refine(
@@ -45,6 +57,24 @@ const createHttpResourceSchema = z
             return true;
         },
         { message: "Invalid subdomain" }
+    )
+    .refine(
+        (data) => {
+            // Ensure at least one hostname is provided
+            return data.domainId || (data.hostnames && data.hostnames.length > 0);
+        },
+        { message: "At least one domain must be specified" }
+    )
+    .refine(
+        (data) => {
+            // If using new hostnames format, ensure exactly one primary
+            if (data.hostnames && data.hostnames.length > 0) {
+                const primaryCount = data.hostnames.filter(h => h.primary).length;
+                return primaryCount === 1;
+            }
+            return true;
+        },
+        { message: "Exactly one hostname must be marked as primary" }
     );
 
 const createRawResourceSchema = z
@@ -70,7 +100,24 @@ const createRawResourceSchema = z
         }
     );
 
-export type CreateResourceResponse = Resource;
+export type CreateResourceResponse = Resource & {
+    hostnames?: Array<{
+        hostnameId: number;
+        domainId: string;
+        subdomain?: string;
+        fullDomain: string;
+        baseDomain: string;
+        primary: boolean;
+    }>;
+};
+
+type ValidatedHostname = {
+    domainId: string;
+    subdomain?: string;
+    fullDomain: string;
+    baseDomain: string;
+    primary: boolean;
+};
 
 registry.registerPath({
     method: "put",
@@ -192,111 +239,122 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId } = parsedBody.data;
-    let subdomain = parsedBody.data.subdomain;
+    const { name, hostMode, hostnames } = parsedBody.data;
 
-    const [domainRes] = await db
-        .select()
-        .from(domains)
-        .where(eq(domains.domainId, domainId))
-        .leftJoin(
-            orgDomains,
-            and(eq(orgDomains.orgId, orgId), eq(orgDomains.domainId, domainId))
-        );
-
-    if (!domainRes || !domainRes.domains) {
-        return next(
-            createHttpError(
-                HttpCode.NOT_FOUND,
-                `Domain with ID ${domainId} not found`
-            )
-        );
+    // handle backward compatibility ---> convert legacy format to new format
+    let processedHostnames = hostnames;
+    if (!hostnames && parsedBody.data.domainId) {
+        processedHostnames = [{
+            domainId: parsedBody.data.domainId,
+            subdomain: parsedBody.data.subdomain || undefined,
+            primary: true
+        }];
     }
 
-    if (domainRes.orgDomains && domainRes.orgDomains.orgId !== orgId) {
-        return next(
-            createHttpError(
-                HttpCode.FORBIDDEN,
-                `Organization does not have access to domain with ID ${domainId}`
-            )
-        );
-    }
-
-    if (!domainRes.domains.verified) {
+    if (!processedHostnames || processedHostnames.length === 0) {
         return next(
             createHttpError(
                 HttpCode.BAD_REQUEST,
-                `Domain with ID ${domainRes.domains.domainId} is not verified`
+                "At least one hostname must be specified"
             )
         );
     }
 
-    let fullDomain = "";
-    if (domainRes.domains.type == "ns") {
-        if (subdomain) {
-            fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
-        } else {
-            fullDomain = domainRes.domains.baseDomain;
+    const validatedHostnames: ValidatedHostname[] = [];
+    for (const hostname of processedHostnames) {
+        const processResult = await processHostname(hostname, orgId);
+        if (!processResult.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    processResult.error || "Failed to process hostname"
+                )
+            );
         }
-    } else if (domainRes.domains.type == "cname") {
-        fullDomain = domainRes.domains.baseDomain;
-    } else if (domainRes.domains.type == "wildcard") {
-        if (subdomain) {
-            // the subdomain cant have a dot in it
-            const parsedSubdomain = subdomainSchema.safeParse(subdomain);
-            if (!parsedSubdomain.success) {
-                return next(
-                    createHttpError(
-                        HttpCode.BAD_REQUEST,
-                        fromError(parsedSubdomain.error).toString()
-                    )
-                );
-            }
-            fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
-        } else {
-            fullDomain = domainRes.domains.baseDomain;
+
+        // Check for conflicts
+        const existingResource = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.fullDomain, processResult.data!.fullDomain));
+
+        if (existingResource.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `Resource with domain ${processResult.data!.fullDomain} already exists`
+                )
+            );
         }
+
+        const existingHostname = await db
+            .select()
+            .from(resourceHostnames)
+            .where(eq(resourceHostnames.fullDomain, processResult.data!.fullDomain));
+
+        if (existingHostname.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `Resource with domain ${processResult.data!.fullDomain} already exists`
+                )
+            );
+        }
+
+        validatedHostnames.push(processResult.data!);
     }
 
-    if (fullDomain === domainRes.domains.baseDomain) {
-        subdomain = null;
-    }
-
-    fullDomain = fullDomain.toLowerCase();
-
-    logger.debug(`Full domain: ${fullDomain}`);
-
-    // make sure the full domain is unique
-    const existingResource = await db
-        .select()
-        .from(resources)
-        .where(eq(resources.fullDomain, fullDomain));
-
-    if (existingResource.length > 0) {
+    const primaryHostname = validatedHostnames.find(h => h.primary);
+    if (!primaryHostname) {
         return next(
             createHttpError(
-                HttpCode.CONFLICT,
-                "Resource with that domain already exists"
+                HttpCode.BAD_REQUEST,
+                "No primary hostname specified"
             )
         );
     }
 
     let resource: Resource | undefined;
+    let createdHostnames: any[] = [];
 
     await db.transaction(async (trx) => {
         const newResource = await trx
             .insert(resources)
             .values({
-                fullDomain,
-                domainId,
+                fullDomain: primaryHostname.fullDomain,
+                domainId: primaryHostname.domainId,
+                subdomain: primaryHostname.subdomain,
                 orgId,
                 name,
-                subdomain,
                 http: true,
                 protocol: "tcp",
-                ssl: true
+                ssl: true,
+                hostMode: hostMode || "multi"
             })
             .returning();
+
+        const resourceId = newResource[0].resourceId;
+
+        for (const hostname of validatedHostnames) {
+            const insertedHostname = await trx.insert(resourceHostnames).values({
+                resourceId,
+                domainId: hostname.domainId,
+                subdomain: hostname.subdomain,
+                fullDomain: hostname.fullDomain,
+                baseDomain: hostname.baseDomain,
+                primary: hostname.primary,
+                createdAt: new Date().toISOString()
+            }).returning();
+
+            createdHostnames.push({
+                hostnameId: insertedHostname[0].hostnameId,
+                domainId: hostname.domainId,
+                subdomain: hostname.subdomain,
+                fullDomain: hostname.fullDomain,
+                baseDomain: hostname.baseDomain,
+                primary: hostname.primary
+            });
+        }
 
         const adminRole = await db
             .select()
@@ -312,14 +370,14 @@ async function createHttpResource(
 
         await trx.insert(roleResources).values({
             roleId: adminRole[0].roleId,
-            resourceId: newResource[0].resourceId
+            resourceId: resourceId
         });
 
         if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
             // make sure the user can access the resource
             await trx.insert(userResources).values({
                 userId: req.user?.userId!,
-                resourceId: newResource[0].resourceId
+                resourceId: resourceId
             });
         }
 
@@ -335,13 +393,115 @@ async function createHttpResource(
         );
     }
 
+    const responseData: CreateResourceResponse = {
+        ...resource,
+        hostnames: createdHostnames
+    };
+
     return response<CreateResourceResponse>(res, {
-        data: resource,
+        data: responseData,
         success: true,
         error: false,
         message: "Http resource created successfully",
         status: HttpCode.CREATED
     });
+}
+
+async function processHostname(
+    hostname: {
+        domainId: string;
+        subdomain?: string;
+        baseDomain?: string;
+        fullDomain?: string;
+        primary: boolean;
+    },
+    orgId: string
+): Promise<{
+    success: boolean;
+    data?: ValidatedHostname;
+    error?: string;
+}> {
+    try {
+        const [domainRes] = await db
+            .select()
+            .from(domains)
+            .where(eq(domains.domainId, hostname.domainId))
+            .leftJoin(
+                orgDomains,
+                and(eq(orgDomains.orgId, orgId), eq(orgDomains.domainId, hostname.domainId))
+            );
+
+        if (!domainRes || !domainRes.domains) {
+            return {
+                success: false,
+                error: `Domain with ID ${hostname.domainId} not found`
+            };
+        }
+
+        if (domainRes.orgDomains && domainRes.orgDomains.orgId !== orgId) {
+            return {
+                success: false,
+                error: `Organization does not have access to domain with ID ${hostname.domainId}`
+            };
+        }
+
+        if (!domainRes.domains.verified) {
+            return {
+                success: false,
+                error: `Domain with ID ${domainRes.domains.domainId} is not verified`
+            };
+        }
+
+        let fullDomain = "";
+        let subdomain = hostname.subdomain;
+
+        if (domainRes.domains.type == "ns") {
+            if (subdomain) {
+                fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
+            } else {
+                fullDomain = domainRes.domains.baseDomain;
+            }
+        } else if (domainRes.domains.type == "cname") {
+            fullDomain = domainRes.domains.baseDomain;
+        } else if (domainRes.domains.type == "wildcard") {
+            if (subdomain) {
+                const parsedSubdomain = subdomainSchema.safeParse(subdomain);
+                if (!parsedSubdomain.success) {
+                    return {
+                        success: false,
+                        error: fromError(parsedSubdomain.error).toString()
+                    };
+                }
+                fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
+            } else {
+                fullDomain = domainRes.domains.baseDomain;
+            }
+        }
+
+        if (fullDomain === domainRes.domains.baseDomain) {
+            subdomain = undefined;
+        }
+
+        fullDomain = fullDomain.toLowerCase();
+        logger.debug(`Full domain: ${fullDomain}`);
+
+        return {
+            success: true,
+            data: {
+                domainId: hostname.domainId,
+                subdomain: subdomain,
+                fullDomain: fullDomain,
+                baseDomain: domainRes.domains.baseDomain,
+                primary: hostname.primary
+            }
+        };
+    } catch (error) {
+        logger.error('Error processing hostname:', error);
+        return {
+            success: false,
+            error: 'Failed to process hostname'
+        };
+    }
 }
 
 async function createRawResource(

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { Resource, resources, sites } from "@server/db";
+import { Resource, resources, resourceHostnames } from "@server/db";
 import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -19,7 +19,16 @@ const getResourceSchema = z
     })
     .strict();
 
-export type GetResourceResponse = Resource;
+export type GetResourceResponse = Resource & {
+    hostnames?: Array<{
+        hostnameId: number;
+        domainId: string;
+        subdomain?: string;
+        fullDomain: string;
+        baseDomain: string;
+        primary: boolean;
+    }>;
+};
 
 registry.registerPath({
     method: "get",
@@ -67,10 +76,31 @@ export async function getResource(
             );
         }
 
+        // Get hostnames for HTTP resources
+        let hostnames: GetResourceResponse["hostnames"] = [];
+        if (resource.http) {
+            const hostnameResults = await db
+                .select()
+                .from(resourceHostnames)
+                .where(eq(resourceHostnames.resourceId, resourceId));
+
+            hostnames = hostnameResults.map(h => ({
+                hostnameId: h.hostnameId!,
+                domainId: h.domainId,
+                subdomain: h.subdomain || undefined,
+                fullDomain: h.fullDomain!,
+                baseDomain: h.baseDomain!,
+                primary: h.primary
+            }));
+        }
+
+        const responseData: GetResourceResponse = {
+            ...resource,
+            ...(resource.http && { hostnames })
+        };
+
         return response(res, {
-            data: {
-                ...resource
-            },
+            data: responseData,
             success: true,
             error: false,
             message: "Resource retrieved successfully",
