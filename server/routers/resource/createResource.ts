@@ -7,6 +7,7 @@ import {
     orgs,
     Resource,
     resources,
+    resourceHostnames,
     roleResources,
     roles,
     userResources
@@ -30,13 +31,24 @@ const createResourceParamsSchema = z
     })
     .strict();
 
+
+const hostnameSchema = z.object({
+    domainId: z.string().nonempty(),
+    subdomain: z.string().optional(),
+    baseDomain: z.string().optional(),
+    fullDomain: z.string().optional(),
+    primary: z.boolean().default(false),
+});
+
 const createHttpResourceSchema = z
     .object({
         name: z.string().min(1).max(255),
         subdomain: z.string().nullable().optional(),
         http: z.boolean(),
         protocol: z.enum(["tcp", "udp"]),
-        domainId: z.string()
+        domainId: z.string().optional(), 
+        hostMode: z.enum(["multi", "redirect"]).default("multi"),
+        hostnames: z.array(hostnameSchema).optional(),
     })
     .strict()
     .refine(
@@ -47,6 +59,24 @@ const createHttpResourceSchema = z
             return true;
         },
         { message: "Invalid subdomain" }
+    )
+    .refine(
+        (data) => {
+            // Ensure at least one hostname is provided
+            return data.domainId || (data.hostnames && data.hostnames.length > 0);
+        },
+        { message: "At least one domain must be specified" }
+    )
+    .refine(
+        (data) => {
+            // If using new hostnames format, ensure exactly one primary
+            if (data.hostnames && data.hostnames.length > 0) {
+                const primaryCount = data.hostnames.filter(h => h.primary).length;
+                return primaryCount === 1;
+            }
+            return true;
+        },
+        { message: "Exactly one hostname must be marked as primary" }
     );
 
 const createRawResourceSchema = z
@@ -72,7 +102,24 @@ const createRawResourceSchema = z
         }
     );
 
-export type CreateResourceResponse = Resource;
+export type CreateResourceResponse = Resource & {
+    hostnames?: Array<{
+        hostnameId: number;
+        domainId: string;
+        subdomain?: string;
+        fullDomain: string;
+        baseDomain: string;
+        primary: boolean;
+    }>;
+};
+
+type ValidatedHostname = {
+    domainId: string;
+    subdomain?: string | null;
+    fullDomain: string;
+    baseDomain: string;
+    primary: boolean;
+};
 
 registry.registerPath({
     method: "put",
@@ -194,41 +241,83 @@ async function createHttpResource(
         );
     }
 
-    const { name, domainId } = parsedBody.data;
-    const subdomain = parsedBody.data.subdomain;
+    const { name, hostMode, hostnames } = parsedBody.data;
 
-    // Validate domain and construct full domain
-    const domainResult = await validateAndConstructDomain(domainId, orgId, subdomain);
-    
-    if (!domainResult.success) {
+    // handle backward compatibility ---> convert legacy format to new format
+    let processedHostnames = hostnames;
+    if (!hostnames && parsedBody.data.domainId) {
+        processedHostnames = [{
+            domainId: parsedBody.data.domainId,
+            subdomain: parsedBody.data.subdomain || undefined,
+            primary: true
+        }];
+    }
+
+    if (!processedHostnames || processedHostnames.length === 0) {
         return next(
             createHttpError(
                 HttpCode.BAD_REQUEST,
-                domainResult.error
+                "At least one hostname must be specified"
             )
         );
     }
 
-    const { fullDomain, subdomain: finalSubdomain } = domainResult;
+    const validatedHostnames: ValidatedHostname[] = [];
+    for (const hostname of processedHostnames) {
+        const processResult = await validateAndConstructDomain(hostname, orgId);
+        if (!processResult.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    processResult.error
+                )
+            );
+        }
 
-    logger.debug(`Full domain: ${fullDomain}`);
+        // Check for conflicts
+        const existingResource = await db
+            .select()
+            .from(resources)
+            .where(eq(resources.fullDomain, processResult.data!.fullDomain));
 
-    // make sure the full domain is unique
-    const existingResource = await db
-        .select()
-        .from(resources)
-        .where(eq(resources.fullDomain, fullDomain));
+        if (existingResource.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `Resource with domain ${processResult.data!.fullDomain} already exists`
+                )
+            );
+        }
 
-    if (existingResource.length > 0) {
+        const existingHostname = await db
+            .select()
+            .from(resourceHostnames)
+            .where(eq(resourceHostnames.fullDomain, processResult.data!.fullDomain));
+
+        if (existingHostname.length > 0) {
+            return next(
+                createHttpError(
+                    HttpCode.CONFLICT,
+                    `Resource with domain ${processResult.data!.fullDomain} already exists`
+                )
+            );
+        }
+
+        validatedHostnames.push(processResult.data!);
+    }
+
+    const primaryHostname = validatedHostnames.find(h => h.primary);
+    if (!primaryHostname) {
         return next(
             createHttpError(
-                HttpCode.CONFLICT,
-                "Resource with that domain already exists"
+                HttpCode.BAD_REQUEST,
+                "No primary hostname specified"
             )
         );
     }
 
     let resource: Resource | undefined;
+    let createdHostnames: any[] = [];
 
     const niceId = await getUniqueResourceName(orgId);
 
@@ -237,16 +326,40 @@ async function createHttpResource(
             .insert(resources)
             .values({
                 niceId,
-                fullDomain,
-                domainId,
                 orgId,
                 name,
-                subdomain: finalSubdomain,
+                fullDomain: primaryHostname.fullDomain,
+                domainId: primaryHostname.domainId,
+                subdomain: primaryHostname.subdomain,
                 http: true,
                 protocol: "tcp",
-                ssl: true
+                ssl: true,
+                hostMode: hostMode || "multi"
             })
             .returning();
+
+        const resourceId = newResource[0].resourceId;
+
+        for (const hostname of validatedHostnames) {
+            const insertedHostname = await trx.insert(resourceHostnames).values({
+                resourceId,
+                domainId: hostname.domainId,
+                subdomain: hostname.subdomain,
+                fullDomain: hostname.fullDomain,
+                baseDomain: hostname.baseDomain,
+                primary: hostname.primary,
+                createdAt: new Date().toISOString()
+            }).returning();
+
+            createdHostnames.push({
+                hostnameId: insertedHostname[0].hostnameId,
+                domainId: hostname.domainId,
+                subdomain: hostname.subdomain,
+                fullDomain: hostname.fullDomain,
+                baseDomain: hostname.baseDomain,
+                primary: hostname.primary
+            });
+        }
 
         const adminRole = await db
             .select()
@@ -262,14 +375,14 @@ async function createHttpResource(
 
         await trx.insert(roleResources).values({
             roleId: adminRole[0].roleId,
-            resourceId: newResource[0].resourceId
+            resourceId: resourceId
         });
 
         if (req.user && req.userOrgRoleId != adminRole[0].roleId) {
             // make sure the user can access the resource
             await trx.insert(userResources).values({
                 userId: req.user?.userId!,
-                resourceId: newResource[0].resourceId
+                resourceId: resourceId
             });
         }
 
@@ -285,8 +398,13 @@ async function createHttpResource(
         );
     }
 
+    const responseData: CreateResourceResponse = {
+        ...resource,
+        hostnames: createdHostnames
+    };
+
     return response<CreateResourceResponse>(res, {
-        data: resource,
+        data: responseData,
         success: true,
         error: false,
         message: "Http resource created successfully",

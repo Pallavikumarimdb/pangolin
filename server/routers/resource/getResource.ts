@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
-import { Resource, resources, sites } from "@server/db";
-import { eq, and } from "drizzle-orm";
+import { Resource, resources, resourceHostnames } from "@server/db";
+import { eq } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -98,8 +98,31 @@ export async function getResource(
             );
         }
 
-        return response<GetResourceResponse>(res, {
-            data: resource,
+        // Get hostnames for HTTP resources
+        let hostnames: GetResourceResponse["hostnames"] = [];
+        if (resource.http) {
+            const hostnameResults = await db
+                .select()
+                .from(resourceHostnames)
+                .where(eq(resourceHostnames.resourceId, resourceId));
+
+            hostnames = hostnameResults.map(h => ({
+                hostnameId: h.hostnameId!,
+                domainId: h.domainId,
+                subdomain: h.subdomain || undefined,
+                fullDomain: h.fullDomain!,
+                baseDomain: h.baseDomain!,
+                primary: h.primary
+            }));
+        }
+
+        const responseData: GetResourceResponse = {
+            ...resource,
+            ...(resource.http && { hostnames })
+        };
+
+        return response(res, {
+            data: responseData,
             success: true,
             error: false,
             message: "Resource retrieved successfully",
