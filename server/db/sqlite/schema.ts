@@ -70,6 +70,22 @@ export const sites = sqliteTable("sites", {
     remoteSubnets: text("remoteSubnets") // comma-separated list of subnets that this site can access
 });
 
+export const resourceHostnames = sqliteTable("resourceHostnames", {
+    hostnameId: integer("hostnameId").primaryKey({ autoIncrement: true }),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" }),
+    domainId: text("domainId")
+        .notNull()
+        .references(() => domains.domainId, { onDelete: "cascade" }),
+    subdomain: text("subdomain"),
+    fullDomain: text("fullDomain").notNull(),
+    baseDomain: text("baseDomain").notNull(),
+    primary: integer("primary", { mode: "boolean" }).notNull().default(false),
+    createdAt: text("createdAt").notNull().default(new Date().toISOString()),
+});
+
+// Update resources table to add hostMode
 export const resources = sqliteTable("resources", {
     resourceId: integer("resourceId").primaryKey({ autoIncrement: true }),
     orgId: text("orgId")
@@ -79,11 +95,11 @@ export const resources = sqliteTable("resources", {
         .notNull(),
     niceId: text("niceId").notNull(),
     name: text("name").notNull(),
-    subdomain: text("subdomain"),
-    fullDomain: text("fullDomain"),
+    subdomain: text("subdomain"), // Keep for backward compatibility
+    fullDomain: text("fullDomain"), // Keep for backward compatibility
     domainId: text("domainId").references(() => domains.domainId, {
         onDelete: "set null"
-    }),
+    }), // Keep for backward compatibility
     ssl: integer("ssl", { mode: "boolean" }).notNull().default(false),
     blockAccess: integer("blockAccess", { mode: "boolean" })
         .notNull()
@@ -109,7 +125,10 @@ export const resources = sqliteTable("resources", {
         onDelete: "cascade"
     }),
     headers: text("headers"), // comma-separated list of headers to add to the request
+    // New field for host mode
+    hostMode: text("hostMode").default("multi"), // "multi" or "redirect"
 });
+
 
 export const targets = sqliteTable("targets", {
     targetId: integer("targetId").primaryKey({ autoIncrement: true }),
@@ -731,3 +750,4 @@ export type SiteResource = InferSelectModel<typeof siteResources>;
 export type OrgDomains = InferSelectModel<typeof orgDomains>;
 export type SetupToken = InferSelectModel<typeof setupTokens>;
 export type HostMeta = InferSelectModel<typeof hostMeta>;
+export type ResourceHostname = InferSelectModel<typeof resourceHostnames>;
