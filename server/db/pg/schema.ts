@@ -6,7 +6,8 @@ import {
     integer,
     bigint,
     real,
-    text
+    text,
+    timestamp
 } from "drizzle-orm/pg-core";
 import { InferSelectModel } from "drizzle-orm";
 
@@ -64,6 +65,23 @@ export const sites = pgTable("sites", {
     remoteSubnets: text("remoteSubnets") // comma-separated list of subnets that this site can access
 });
 
+export const resourceHostnames = pgTable("resourceHostnames", {
+    hostnameId: serial("hostnameId").primaryKey(),
+    resourceId: integer("resourceId")
+        .notNull()
+        .references(() => resources.resourceId, { onDelete: "cascade" }),
+    domainId: varchar("domainId")
+        .notNull()
+        .references(() => domains.domainId, { onDelete: "cascade" }),
+    subdomain: varchar("subdomain"),
+    fullDomain: varchar("fullDomain").notNull(),
+    baseDomain: varchar("baseDomain").notNull(),
+    primary: boolean("primary").notNull().default(false),
+    createdAt: timestamp("createdAt", { withTimezone: false })
+        .notNull()
+        .defaultNow()
+});
+
 export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
     orgId: varchar("orgId")
@@ -73,11 +91,11 @@ export const resources = pgTable("resources", {
         .notNull(),
     niceId: text("niceId").notNull(),
     name: varchar("name").notNull(),
-    subdomain: varchar("subdomain"),
-    fullDomain: varchar("fullDomain"),
+    subdomain: varchar("subdomain"), // Keep for backward compatibility
+    fullDomain: varchar("fullDomain"), // Keep for backward compatibility
     domainId: varchar("domainId").references(() => domains.domainId, {
         onDelete: "set null"
-    }),
+    }), // Keep for backward compatibility
     ssl: boolean("ssl").notNull().default(false),
     blockAccess: boolean("blockAccess").notNull().default(false),
     sso: boolean("sso").notNull().default(true),
@@ -97,6 +115,7 @@ export const resources = pgTable("resources", {
         onDelete: "cascade"
     }),
     headers: text("headers"), // comma-separated list of headers to add to the request
+    hostMode: varchar("hostMode").default("multi") // "multi" or "redirect"
 });
 
 export const targets = pgTable("targets", {
