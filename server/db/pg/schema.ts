@@ -79,8 +79,9 @@ export const resourceHostnames = pgTable("resourceHostnames", {
     primary: boolean("primary").notNull().default(false),
     createdAt: timestamp("createdAt", { withTimezone: false })
         .notNull()
-        .defaultNow()
+        .defaultNow(),
 });
+
 
 export const resources = pgTable("resources", {
     resourceId: serial("resourceId").primaryKey(),
