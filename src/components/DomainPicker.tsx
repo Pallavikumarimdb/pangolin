@@ -72,18 +72,22 @@ interface DomainPicker2Props {
         baseDomain: string;
     }) => void;
     cols?: number;
+    initialDomainId?: string;
+    initialSubdomain?: string;
 }
 
 export default function DomainPicker2({
     orgId,
     onDomainChange,
-    cols = 2
+    cols = 2,
+    initialDomainId,
+    initialSubdomain
 }: DomainPicker2Props) {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const t = useTranslations();
 
-    const [subdomainInput, setSubdomainInput] = useState<string>("");
+    const [subdomainInput, setSubdomainInput] = useState<string>(initialSubdomain || "");
     const [selectedBaseDomain, setSelectedBaseDomain] =
         useState<DomainOption | null>(null);
     const [availableOptions, setAvailableOptions] = useState<AvailableOption[]>(
@@ -94,6 +98,7 @@ export default function DomainPicker2({
     >([]);
     const [loadingDomains, setLoadingDomains] = useState(false);
     const [open, setOpen] = useState(false);
+    const [initialized, setInitialized] = useState(false);
 
     // Provided domain search states
     const [userInput, setUserInput] = useState<string>("");
@@ -123,41 +128,6 @@ export default function DomainPicker2({
                             type: domain.type as "ns" | "cname" | "wildcard"
                         }));
                     setOrganizationDomains(domains);
-
-                    // Auto-select first available domain
-                    if (domains.length > 0) {
-                        // Select the first organization domain
-                        const firstOrgDomain = domains[0];
-                        const domainOption: DomainOption = {
-                            id: `org-${firstOrgDomain.domainId}`,
-                            domain: firstOrgDomain.baseDomain,
-                            type: "organization",
-                            verified: firstOrgDomain.verified,
-                            domainType: firstOrgDomain.type,
-                            domainId: firstOrgDomain.domainId
-                        };
-                        setSelectedBaseDomain(domainOption);
-
-                        onDomainChange?.({
-                            domainId: firstOrgDomain.domainId,
-                            type: "organization",
-                            subdomain: undefined,
-                            fullDomain: firstOrgDomain.baseDomain,
-                            baseDomain: firstOrgDomain.baseDomain
-                        });
-                    } else if (build === "saas" || build === "enterprise") {
-                        // If no organization domains, select the provided domain option
-                        const domainOptionText =
-                            build === "enterprise"
-                                ? "Provided Domain"
-                                : "Free Provided Domain";
-                        const freeDomainOption: DomainOption = {
-                            id: "provided-search",
-                            domain: domainOptionText,
-                            type: "provided-search"
-                        };
-                        setSelectedBaseDomain(freeDomainOption);
-                    }
                 }
             } catch (error) {
                 console.error("Failed to load organization domains:", error);
@@ -173,6 +143,80 @@ export default function DomainPicker2({
 
         loadOrganizationDomains();
     }, [orgId, api]);
+
+    // Initialize with initial values when domains are loaded
+    useEffect(() => {
+        if (organizationDomains.length > 0 && !initialized) {
+            setInitialized(true);
+            
+            if (initialDomainId) {
+                // Find the initial domain in organization domains
+                const initialDomain = organizationDomains.find(
+                    d => d.domainId === initialDomainId
+                );
+                
+                if (initialDomain) {
+                    const domainOption: DomainOption = {
+                        id: `org-${initialDomain.domainId}`,
+                        domain: initialDomain.baseDomain,
+                        type: "organization",
+                        verified: initialDomain.verified,
+                        domainType: initialDomain.type,
+                        domainId: initialDomain.domainId
+                    };
+                    setSelectedBaseDomain(domainOption);
+
+                    // Trigger onDomainChange with initial values
+                    const fullDomain = initialSubdomain
+                        ? `${initialSubdomain}.${initialDomain.baseDomain}`
+                        : initialDomain.baseDomain;
+                        
+                    onDomainChange?.({
+                        domainId: initialDomain.domainId,
+                        type: "organization",
+                        subdomain: initialSubdomain || undefined,
+                        fullDomain: fullDomain,
+                        baseDomain: initialDomain.baseDomain
+                    });
+                    return;
+                }
+            }
+
+            // Fallback to auto-selection if no initial domain or not found
+            if (organizationDomains.length > 0) {
+                const firstOrgDomain = organizationDomains[0];
+                const domainOption: DomainOption = {
+                    id: `org-${firstOrgDomain.domainId}`,
+                    domain: firstOrgDomain.baseDomain,
+                    type: "organization",
+                    verified: firstOrgDomain.verified,
+                    domainType: firstOrgDomain.type,
+                    domainId: firstOrgDomain.domainId
+                };
+                setSelectedBaseDomain(domainOption);
+
+                onDomainChange?.({
+                    domainId: firstOrgDomain.domainId,
+                    type: "organization",
+                    subdomain: undefined,
+                    fullDomain: firstOrgDomain.baseDomain,
+                    baseDomain: firstOrgDomain.baseDomain
+                });
+            } else if (build === "saas" || build === "enterprise") {
+                // If no organization domains, select the provided domain option
+                const domainOptionText =
+                    build === "enterprise"
+                        ? "Provided Domain"
+                        : "Free Provided Domain";
+                const freeDomainOption: DomainOption = {
+                    id: "provided-search",
+                    domain: domainOptionText,
+                    type: "provided-search"
+                };
+                setSelectedBaseDomain(freeDomainOption);
+            }
+        }
+    }, [organizationDomains, initialDomainId, initialSubdomain, initialized, onDomainChange]);
 
     const checkAvailability = useCallback(
         async (input: string) => {
@@ -310,11 +354,17 @@ export default function DomainPicker2({
                     baseDomain: option.domain
                 });
             } else {
+                // For non-CNAME domains, preserve current subdomain if valid
+                const currentSubdomain = subdomainInput;
+                const fullDomain = currentSubdomain
+                    ? `${currentSubdomain}.${option.domain}`
+                    : option.domain;
+                    
                 onDomainChange?.({
                     domainId: option.domainId!,
                     type: "organization",
-                    subdomain: undefined,
-                    fullDomain: option.domain,
+                    subdomain: currentSubdomain || undefined,
+                    fullDomain: fullDomain,
                     baseDomain: option.domain
                 });
             }
@@ -329,7 +379,7 @@ export default function DomainPicker2({
 
         if (selectedBaseDomain && selectedBaseDomain.type === "organization") {
             const isValid = validateSubdomain(validInput, selectedBaseDomain);
-            if (isValid) {
+            if (isValid || validInput === "") {
                 const fullDomain = validInput
                     ? `${validInput}.${selectedBaseDomain.domain}`
                     : selectedBaseDomain.domain;
@@ -338,14 +388,6 @@ export default function DomainPicker2({
                     type: "organization",
                     subdomain: validInput || undefined,
                     fullDomain: fullDomain,
-                    baseDomain: selectedBaseDomain.domain
-                });
-            } else if (validInput === "") {
-                onDomainChange?.({
-                    domainId: selectedBaseDomain.domainId!,
-                    type: "organization",
-                    subdomain: undefined,
-                    fullDomain: selectedBaseDomain.domain,
                     baseDomain: selectedBaseDomain.domain
                 });
             }

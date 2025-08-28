@@ -16,7 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { ListSitesResponse } from "@server/routers/site";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AxiosResponse } from "axios";
 import { useParams, useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -51,8 +51,23 @@ import {
     CredenzaTitle
 } from "@app/components/Credenza";
 import DomainPicker from "@app/components/DomainPicker";
-import { Globe } from "lucide-react";
+import { Globe, Crown, Trash2, Plus, ShieldCheck, Edit } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { build } from "@server/build";
+
+
+type HostMode = "multi" | "redirect";
+
+type HostnameEntry = {
+    hostnameId?: number; // present for existing hostnames
+    domainId: string;
+    baseDomain: string;
+    subdomain?: string;
+    fullDomain: string;
+    primary: boolean;
+    _delete?: boolean; // local flag for removal
+};
 
 export default function GeneralForm() {
     const [formKey, setFormKey] = useState(0);
@@ -78,14 +93,28 @@ export default function GeneralForm() {
     >([]);
 
     const [loadingPage, setLoadingPage] = useState(true);
+
+    // hostMode from resource when available, default to "multi"
+    const [hostMode, setHostMode] = useState<HostMode>(
+        (resource as any)?.hostMode === "redirect" ? "redirect" : "multi"
+    );
+
+    // Available hostnames (existing + newly added)
+    const [hostnames, setHostnames] = useState<HostnameEntry[]>([]);
+
     const [resourceFullDomain, setResourceFullDomain] = useState(
         `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
     );
-    const [selectedDomain, setSelectedDomain] = useState<{
+
+    const [pendingDomain, setPendingDomain] = useState<{
         domainId: string;
         subdomain?: string;
+        baseDomain: string;
         fullDomain: string;
     } | null>(null);
+
+    const [editingHostnameIndex, setEditingHostnameIndex] = useState<number | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     const GeneralFormSchema = z
         .object({
@@ -122,11 +151,59 @@ export default function GeneralForm() {
             name: resource.name,
             subdomain: resource.subdomain ? resource.subdomain : undefined,
             domainId: resource.domainId || undefined,
-            proxyPort: resource.proxyPort || undefined,
-            // enableProxy: resource.enableProxy || false
+            proxyPort: resource.proxyPort || undefined
         },
-        mode: "onChange"
     });
+
+    // Build a lookup for baseDomain by domainId
+    const baseDomainById = useMemo(() => {
+        const m = new Map<string, string>();
+        baseDomains.forEach((d) => m.set(d.domainId, d.baseDomain));
+        return m;
+    }, [baseDomains]);
+
+    // Initialize hostnames from resource or fallback to legacy single hostname
+    const hydrateHostnamesFromResource = () => {
+        const r: any = resource;
+
+        if (Array.isArray(r.hostnames) && r.hostnames.length > 0) {
+            const list: HostnameEntry[] = r.hostnames.map((h: any) => ({
+                hostnameId: h.hostnameId,
+                domainId: h.domainId,
+                subdomain: h.subdomain ?? undefined,
+                fullDomain: h.fullDomain,
+                baseDomain: h.baseDomain,
+                primary: !!h.primary
+            }));
+            setHostnames(list);
+            const primary = list.find((h) => h.primary) ?? list[0];
+            if (primary) {
+                setResourceFullDomain(
+                    `${resource.ssl ? "https" : "http"}://${primary.fullDomain}`
+                );
+            }
+            return;
+        }
+
+        // Legacy fallback to single domain from resource.domainId + resource.subdomain
+        if (resource.domainId && resource.fullDomain) {
+            const bd = baseDomainById.get(resource.domainId) || "";
+            const single: HostnameEntry = {
+                hostnameId: undefined,
+                domainId: resource.domainId,
+                subdomain: resource.subdomain ?? undefined,
+                fullDomain: resource.fullDomain!,
+                baseDomain: bd,
+                primary: true
+            };
+            setHostnames([single]);
+            setResourceFullDomain(
+                `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
+            );
+        } else {
+            setHostnames([]);
+        }
+    };
 
     useEffect(() => {
         const fetchSites = async () => {
@@ -167,57 +244,257 @@ export default function GeneralForm() {
         };
 
         load();
-    }, []);
+    }, [orgId]);
+
+    useEffect(() => {
+        if (baseDomains.length > 0 && !loadingPage) {
+            hydrateHostnamesFromResource();
+        }
+    }, [baseDomains, resource, loadingPage]);
+
+    const upsertHostname = (entry: HostnameEntry) => {
+        setHostnames((prev) => {
+            const existingNonDeleted = prev.filter(h => !h._delete);
+            if (existingNonDeleted.some((h) => h.fullDomain === entry.fullDomain)) {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorUpdate"),
+                    description: "A hostname with that domain already exists."
+                });
+                return prev;
+            }
+
+            const next = [...prev, entry];
+            // will ensure exactly one primary among non-deleted items
+            const aliveItems = next.filter(h => !h._delete);
+            if (!aliveItems.some((h) => h.primary) && aliveItems.length > 0) {
+                aliveItems[0].primary = true;
+            }
+            return next;
+        });
+    };
+
+    const updateHostname = (index: number, updatedEntry: HostnameEntry) => {
+        setHostnames((prev) => {
+            const next = [...prev];
+            const oldFullDomain = next[index].fullDomain;
+
+            const otherHostnames = next.filter((_, i) => i !== index && !next[i]._delete);
+            if (otherHostnames.some((h) => h.fullDomain === updatedEntry.fullDomain)) {
+                toast({
+                    variant: "destructive",
+                    title: t("resourceErrorUpdate"),
+                    description: "A hostname with that domain already exists."
+                });
+                return prev;
+            }
+
+            next[index] = updatedEntry;
+
+            const aliveItems = next.filter(h => !h._delete);
+            if (!aliveItems.some((h) => h.primary) && aliveItems.length > 0) {
+                aliveItems[0].primary = true;
+            }
+            return next;
+        });
+    };
+
+    const removeHostname = (idx: number) => {
+        setHostnames((prev) => {
+            const next = [...prev];
+            const target = next[idx];
+            if (target.hostnameId) {
+                // mark for deletion if it exists in DB
+                next[idx] = { ...target, _delete: true, primary: false };
+            } else {
+                // remove if it's a new entry
+                next.splice(idx, 1);
+            }
+            // If primary removed, select another as primary
+            const aliveItems = next.filter(h => !h._delete);
+            if (!aliveItems.some((h) => h.primary) && aliveItems.length > 0) {
+                aliveItems[0].primary = true;
+            }
+            return next;
+        });
+    };
+
+    const makePrimary = (idx: number) => {
+        setHostnames((prev) => {
+            const next = prev.map((h, i) =>
+                i === idx ? { ...h, primary: true } : { ...h, primary: false }
+            );
+            return next;
+        });
+    };
+
+    const handleEditHostname = (index: number) => {
+        const hostname = hostnames[index];
+        setEditingHostnameIndex(index);
+        setIsEditMode(true);
+
+        // Pre-populate the domain picker with current values
+        setPendingDomain({
+            domainId: hostname.domainId,
+            subdomain: hostname.subdomain,
+            baseDomain: hostname.baseDomain,
+            fullDomain: hostname.fullDomain
+        });
+
+        setEditDomainOpen(true);
+    };
+
+    const handleSaveEdit = () => {
+        if (editingHostnameIndex === null || !pendingDomain) {
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Please select a valid domain configuration."
+            });
+            return;
+        }
+
+        const currentHostname = hostnames[editingHostnameIndex];
+        const updatedHostname: HostnameEntry = {
+            ...currentHostname,
+            domainId: pendingDomain.domainId,
+            subdomain: pendingDomain.subdomain,
+            baseDomain: pendingDomain.baseDomain,
+            fullDomain: pendingDomain.fullDomain
+        };
+
+        updateHostname(editingHostnameIndex, updatedHostname);
+
+        // reset edit state
+        setEditingHostnameIndex(null);
+        setIsEditMode(false);
+        setPendingDomain(null);
+        setEditDomainOpen(false);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingHostnameIndex(null);
+        setIsEditMode(false);
+        setPendingDomain(null);
+        setEditDomainOpen(false);
+    };
+
+    const aliveHostnames = useMemo(
+        () => hostnames.filter((h) => !h._delete),
+        [hostnames]
+    );
+
+    const primaryHostname = useMemo(
+        () => aliveHostnames.find((h) => h.primary) || aliveHostnames[0],
+        [aliveHostnames]
+    );
+
+    useEffect(() => {
+        if (primaryHostname) {
+            setResourceFullDomain(
+                `${resource.ssl ? "https" : "http"}://${primaryHostname.fullDomain}`
+            );
+        } else if (resource.fullDomain) {
+            setResourceFullDomain(
+                `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
+            );
+        }
+    }, [primaryHostname, resource.ssl, resource.fullDomain]);
 
     async function onSubmit(data: GeneralFormValues) {
         setSaveLoading(true);
 
-        const res = await api
-            .post<AxiosResponse<UpdateResourceResponse>>(
-                `resource/${resource?.resourceId}`,
-                {
-                    enabled: data.enabled,
-                    name: data.name,
-                    subdomain: data.subdomain,
-                    domainId: data.domainId,
-                    proxyPort: data.proxyPort,
-                    // ...(!resource.http && {
-                    //     enableProxy: data.enableProxy
-                    // })
-                }
-            )
-            .catch((e) => {
-                toast({
-                    variant: "destructive",
-                    title: t("resourceErrorUpdate"),
-                    description: formatAxiosError(
-                        e,
-                        t("resourceErrorUpdateDescription")
-                    )
-                });
-            });
+        // build request body (preserve original fields)
+        const body: any = {
+            enabled: data.enabled,
+            name: data.name,
+            proxyPort: data.proxyPort
+        };
 
-        if (res && res.status === 200) {
-            toast({
-                title: t("resourceUpdated"),
-                description: t("resourceUpdatedDescription")
-            });
+        if (resource.http) {
+            // new multi-domain payload
+            body.hostMode = hostMode;
 
-            const resource = res.data.data;
+            // Only send hostnames if there are changes or if we're working with the new format
+            const resourceHasHostnames = (resource as any).hostnames && Array.isArray((resource as any).hostnames);
+            const hasHostnameChanges = hostnames.some(h => h._delete || !h.hostnameId);
 
-            updateResource({
-                enabled: data.enabled,
-                name: data.name,
-                subdomain: data.subdomain,
-                fullDomain: resource.fullDomain,
-                proxyPort: data.proxyPort,
-                // ...(!resource.http && {
-                //     enableProxy: data.enableProxy
-                // })
-            });
+            if (resourceHasHostnames || hasHostnameChanges || hostnames.length > 0) {
+                body.hostnames = hostnames.map((h) => ({
+                    hostnameId: h.hostnameId,
+                    domainId: h.domainId,
+                    subdomain: h.subdomain ?? undefined,
+                    baseDomain: h.baseDomain,
+                    fullDomain: h.fullDomain,
+                    primary: !!h.primary,
+                    _delete: h._delete
+                }));
+            }
 
-            router.refresh();
+            // Keep legacy compatibility fields if we're not using new hostnames format
+            // if (!resourceHasHostnames && primaryHostname) {
+            //     body.domainId = primaryHostname.domainId;
+            //     body.subdomain = primaryHostname.subdomain ?? null;
+            // }
+        } else {
+            // non-http legacy behavior
+            body.domainId = data.domainId;
+            body.subdomain = data.subdomain;
         }
+
+        try {
+            const res = await api
+                .post<AxiosResponse<UpdateResourceResponse>>(
+                    `resource/${resource?.resourceId}`,
+                    body
+                );
+
+            if (res && res.status === 200) {
+                toast({
+                    title: t("resourceUpdated"),
+                    description: t("resourceUpdatedDescription")
+                });
+
+                const updated = res.data.data;
+
+                updateResource({
+                    enabled: updated.enabled,
+                    name: updated.name,
+                    subdomain: updated.subdomain ?? null,
+                    fullDomain: updated.fullDomain,
+                    proxyPort: updated.proxyPort,
+                    hostMode: (updated as any).hostMode,
+                    hostnames: (updated as any).hostnames
+                } as any);
+
+                // Refresh local hostnames from server response (source of truth)
+                if (updated.hostnames) {
+                    const nextHostnames: HostnameEntry[] = updated.hostnames.map(
+                        (h) => ({
+                            hostnameId: h.hostnameId,
+                            domainId: h.domainId,
+                            subdomain: h.subdomain,
+                            baseDomain: h.baseDomain,
+                            fullDomain: h.fullDomain,
+                            primary: h.primary
+                        })
+                    );
+                    setHostnames(nextHostnames);
+                }
+
+                router.refresh();
+            }
+        } catch (e: any) {
+            toast({
+                variant: "destructive",
+                title: t("resourceErrorUpdate"),
+                description: formatAxiosError(
+                    e,
+                    t("resourceErrorUpdateDescription")
+                )
+            });
+        }
+
         setSaveLoading(false);
     }
 
@@ -317,10 +594,10 @@ export default function GeneralForm() {
                                                                                 .target
                                                                                 .value
                                                                                 ? parseInt(
-                                                                                      e
-                                                                                          .target
-                                                                                          .value
-                                                                                  )
+                                                                                    e
+                                                                                        .target
+                                                                                        .value
+                                                                                )
                                                                                 : undefined
                                                                         )
                                                                     }
@@ -335,69 +612,191 @@ export default function GeneralForm() {
                                                         </FormItem>
                                                     )}
                                                 />
-
-                                                {/* {build == "oss" && (
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="enableProxy"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                                <FormControl>
-                                                                    <Checkbox
-                                                                        variant={
-                                                                            "outlinePrimarySquare"
-                                                                        }
-                                                                        checked={
-                                                                            field.value
-                                                                        }
-                                                                        onCheckedChange={
-                                                                            field.onChange
-                                                                        }
-                                                                    />
-                                                                </FormControl>
-                                                                <div className="space-y-1 leading-none">
-                                                                    <FormLabel>
-                                                                        {t(
-                                                                            "resourceEnableProxy"
-                                                                        )}
-                                                                    </FormLabel>
-                                                                    <FormDescription>
-                                                                        {t(
-                                                                            "resourceEnableProxyDescription"
-                                                                        )}
-                                                                    </FormDescription>
-                                                                </div>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                )} */}
                                             </>
                                         )}
 
                                         {resource.http && (
-                                            <div className="space-y-2">
-                                                <Label>
-                                                    {t("resourceDomain")}
-                                                </Label>
-                                                <div className="border p-2 rounded-md flex items-center justify-between">
-                                                    <span className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <Globe size="14" />
-                                                        {resourceFullDomain}
-                                                    </span>
-                                                    <Button
-                                                        variant="secondary"
-                                                        type="button"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setEditDomainOpen(
-                                                                true
-                                                            )
-                                                        }
+                                            <div className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label>
+                                                        {t("resourceDomain")}
+                                                    </Label>
+                                                    <div className="border p-2 rounded-md flex items-center justify-between">
+                                                        <span className="text-sm text-muted-foreground flex items-center gap-2">
+                                                            <Globe size="14" />
+                                                            {resourceFullDomain}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Host mode selector */}
+                                                <div className="space-y-2">
+                                                    <Label className="text-sm font-medium">
+                                                        Host handling
+                                                    </Label>
+                                                    <RadioGroup
+                                                        value={hostMode}
+                                                        onValueChange={(val: HostMode) => {
+                                                            setHostMode(val);
+                                                        }}
+                                                        className="grid grid-cols-1 sm:grid-cols-2 gap-2"
                                                     >
-                                                        {t(
-                                                            "resourceEditDomain"
+                                                        <label
+                                                            htmlFor="hostmode-redirect"
+                                                            className={cn(
+                                                                "relative flex rounded-lg border p-3 transition-colors cursor-pointer",
+                                                                hostMode === "redirect"
+                                                                    ? "border-primary bg-primary/10"
+                                                                    : "border-input hover:bg-accent"
+                                                            )}
+                                                        >
+                                                            <RadioGroupItem
+                                                                value="redirect"
+                                                                id="hostmode-redirect"
+                                                                className="absolute left-3 top-3 h-4 w-4 border-primary text-primary"
+                                                            />
+                                                            <div className="pl-7">
+                                                                <div className="flex items-center gap-2 font-medium">
+                                                                    <ShieldCheck className="h-4 w-4" />
+                                                                    Primary Domain Redirect
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground mt-1">
+                                                                    All other domains 301 redirect to primary.
+                                                                </p>
+                                                            </div>
+                                                        </label>
+
+                                                        <label
+                                                            htmlFor="hostmode-multi"
+                                                            className={cn(
+                                                                "relative flex rounded-lg border p-3 transition-colors cursor-pointer",
+                                                                hostMode === "multi"
+                                                                    ? "border-primary bg-primary/10"
+                                                                    : "border-input hover:bg-accent"
+                                                            )}
+                                                        >
+                                                            <RadioGroupItem
+                                                                value="multi"
+                                                                id="hostmode-multi"
+                                                                className="absolute left-3 top-3 h-4 w-4 border-primary text-primary"
+                                                            />
+                                                            <div className="pl-7">
+                                                                <div className="flex items-center gap-2 font-medium">
+                                                                    <Globe className="h-4 w-4" />
+                                                                    Multi-Domain Mode
+                                                                </div>
+                                                                <p className="text-xs text-muted-foreground mt-1">
+                                                                    Serve the same resource on all assigned
+                                                                    domains. No redirects.
+                                                                </p>
+                                                            </div>
+                                                        </label>
+                                                    </RadioGroup>
+                                                </div>
+
+                                                {/* Hostnames list */}
+                                                <div className="space-y-2">
+                                                    <div className="flex items-center justify-between my-4">
+                                                        <Label className="text-sm font-medium">
+                                                            Assigned domains
+                                                        </Label>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={() => {
+                                                                setPendingDomain(null);
+                                                                setIsEditMode(false);
+                                                                setEditingHostnameIndex(null);
+                                                                setEditDomainOpen(true);
+                                                            }}
+                                                        >
+                                                            <Plus className="h-4 w-4 mr-1" />
+                                                            Add Domain
+                                                        </Button>
+                                                    </div>
+
+                                                    <div className="rounded-md border divide-y">
+                                                        {aliveHostnames.length === 0 && (
+                                                            <div className="text-sm text-muted-foreground p-3">
+                                                                No domains assigned yet. Click{" "}
+                                                                <span className="font-medium">Add Domain</span>{" "}
+                                                                to assign one.
+                                                            </div>
                                                         )}
-                                                    </Button>
+
+                                                        {aliveHostnames.map((h, idx) => {
+                                                            // Find the actual index in the full array for actions
+                                                            const actualIdx = hostnames.findIndex(
+                                                                orig => orig.fullDomain === h.fullDomain && !orig._delete
+                                                            );
+
+                                                            return (
+                                                                <div
+                                                                    key={`${h.hostnameId ?? "new"}-${h.fullDomain}`}
+                                                                    className="flex items-center justify-between p-3"
+                                                                >
+                                                                    <div className="min-w-0">
+                                                                        <div className="font-mono text-sm truncate">
+                                                                            {h.fullDomain}
+                                                                        </div>
+                                                                        <div className="text-[11px] text-muted-foreground">
+                                                                            {h.subdomain
+                                                                                ? `${h.subdomain}.`
+                                                                                : ""}
+                                                                            {h.baseDomain}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        {h.primary ? (
+                                                                            <span className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                                                                <Crown className="h-3 w-3" />
+                                                                                Primary
+                                                                            </span>
+                                                                        ) : (
+                                                                            <Button
+                                                                                type="button"
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() => makePrimary(actualIdx)}
+                                                                            >
+                                                                                <Crown className="h-4 w-4 mr-1" />
+                                                                                Make Primary
+                                                                            </Button>
+                                                                        )}
+
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() => handleEditHostname(actualIdx)}
+                                                                        >
+                                                                            <Edit className="h-4 w-4 mr-1" />
+                                                                            Edit
+                                                                        </Button>
+
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="ghost"
+                                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                                            onClick={() => removeHostname(actualIdx)}
+                                                                            disabled={aliveHostnames.length === 1}
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4 mr-1" />
+                                                                            Remove
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Tip: You can add <code>example.ch</code> and{" "}
+                                                        <code>www.example.ch</code>, then mark your
+                                                        preferred one as Primary and choose "Primary Domain
+                                                        Redirect".
+                                                    </p>
                                                 </div>
                                             </div>
                                         )}
@@ -409,12 +808,9 @@ export default function GeneralForm() {
                         <SettingsSectionFooter>
                             <Button
                                 type="submit"
-                                onClick={() => {
-                                    console.log(form.getValues());
-                                }}
+                                onClick={form.handleSubmit(onSubmit)}
                                 loading={saveLoading}
                                 disabled={saveLoading}
-                                form="general-settings-form"
                             >
                                 {t("saveSettings")}
                             </Button>
@@ -424,52 +820,77 @@ export default function GeneralForm() {
 
                 <Credenza
                     open={editDomainOpen}
-                    onOpenChange={(setOpen) => setEditDomainOpen(setOpen)}
+                    onOpenChange={(open) => {
+                        setEditDomainOpen(open);
+                        if (!open) {
+                            handleCancelEdit();
+                        }
+                    }}
                 >
                     <CredenzaContent>
                         <CredenzaHeader>
-                            <CredenzaTitle>Edit Domain</CredenzaTitle>
+                            <CredenzaTitle>
+                                {isEditMode ? "Edit Domain" : "Add Domain"}
+                            </CredenzaTitle>
                             <CredenzaDescription>
-                                Select a domain for your resource
+                                {isEditMode
+                                    ? "Update the domain configuration for this resource."
+                                    : "Pick a base domain and (optionally) subdomain to add as an alias for this resource."
+                                }
                             </CredenzaDescription>
                         </CredenzaHeader>
                         <CredenzaBody>
                             <DomainPicker
                                 orgId={orgId as string}
                                 cols={1}
+                                // Pre-populate with current values if editing
+                                initialDomainId={isEditMode && editingHostnameIndex !== null ? hostnames[editingHostnameIndex]?.domainId : undefined}
+                                initialSubdomain={isEditMode && editingHostnameIndex !== null ? hostnames[editingHostnameIndex]?.subdomain : undefined}
                                 onDomainChange={(res) => {
-                                    const selected = {
+                                    // Normalize into our local pendingDomain format
+                                    const pd = {
                                         domainId: res.domainId,
                                         subdomain: res.subdomain,
+                                        baseDomain: res.baseDomain,
                                         fullDomain: res.fullDomain
                                     };
-                                    setSelectedDomain(selected);
+                                    setPendingDomain(pd);
                                 }}
                             />
                         </CredenzaBody>
                         <CredenzaFooter>
                             <CredenzaClose asChild>
-                                <Button variant="outline">{t("cancel")}</Button>
+                                <Button variant="outline" onClick={handleCancelEdit}>
+                                    {t("cancel")}
+                                </Button>
                             </CredenzaClose>
                             <Button
                                 onClick={() => {
-                                    if (selectedDomain) {
-                                        setResourceFullDomain(
-                                            selectedDomain.fullDomain
-                                        );
-                                        form.setValue(
-                                            "domainId",
-                                            selectedDomain.domainId
-                                        );
-                                        form.setValue(
-                                            "subdomain",
-                                            selectedDomain.subdomain
-                                        );
+                                    if (!pendingDomain) {
+                                        toast({
+                                            variant: "destructive",
+                                            title: "Select a domain",
+                                            description:
+                                                "Please choose a domain and subdomain (if needed) before saving."
+                                        });
+                                        return;
+                                    }
+
+                                    if (isEditMode) {
+                                        handleSaveEdit();
+                                    } else {
+                                        upsertHostname({
+                                            domainId: pendingDomain.domainId,
+                                            subdomain: pendingDomain.subdomain,
+                                            baseDomain: pendingDomain.baseDomain,
+                                            fullDomain: pendingDomain.fullDomain,
+                                            primary: aliveHostnames.length === 0 // auto-primary for first
+                                        });
                                         setEditDomainOpen(false);
                                     }
                                 }}
                             >
-                                Select Domain
+                                {isEditMode ? "Save Changes" : "Add"}
                             </Button>
                         </CredenzaFooter>
                     </CredenzaContent>
