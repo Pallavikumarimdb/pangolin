@@ -343,7 +343,6 @@ async function createHttpResource(
                 fullDomain: hostname.fullDomain,
                 baseDomain: hostname.baseDomain,
                 primary: hostname.primary,
-                createdAt: new Date().toISOString()
             }).returning();
 
             createdHostnames.push({

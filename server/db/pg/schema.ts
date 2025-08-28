@@ -77,7 +77,7 @@ export const resourceHostnames = pgTable("resourceHostnames", {
     fullDomain: varchar("fullDomain").notNull(),
     baseDomain: varchar("baseDomain").notNull(),
     primary: boolean("primary").notNull().default(false),
-    createdAt: timestamp("createdAt", { withTimezone: false })
+    createdAt: timestamp("createdAt")
         .notNull()
         .defaultNow(),
 });
