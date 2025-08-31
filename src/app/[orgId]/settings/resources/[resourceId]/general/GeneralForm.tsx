@@ -399,7 +399,6 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                     title: "Resource moved successfully!",
                     description: (
                         <div className="space-y-1">
-                            <p>Resource moved successfully!</p>
                             <p>Moved to: {moveData.targetOrgName}</p>
                             <p>Redirecting to the new organization...</p>
                         </div>
@@ -669,7 +668,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                         </SettingsSectionBody>
 
                         <SettingsSectionFooter>
-                            <div className="flex flex-col-2 items-center justify-between w-full space-x-2 mt-24">
+                            <div className="flex flex-col-2 items-center justify-between w-full space-x-2 mt-10">
 
                                 <InfoSection>
                                     <InfoSectionContent>
@@ -779,18 +778,15 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                 {moveImpact.impact.rolePermissions.count > 0 && (
                                                                                     <div>
                                                                                         <p className="text-sm font-medium text-yellow-800 mb-1">
-                                                                                            Roles that will lose access (
-                                                                                            {moveImpact.impact.rolePermissions.count}):
+                                                                                            Roles that will lose access ({moveImpact.impact.rolePermissions.count}):
                                                                                         </p>
                                                                                         <ul className="text-sm text-yellow-700 ml-4 space-y-1">
-                                                                                            {moveImpact.impact.rolePermissions.details.map(
-                                                                                                (role, idx) => (
-                                                                                                    <li key={idx} className="flex items-start gap-2">
-                                                                                                        <span>•</span>
-                                                                                                        <span>{role.roleName}</span>
-                                                                                                    </li>
-                                                                                                )
-                                                                                            )}
+                                                                                            {moveImpact.impact.rolePermissions.details.map((role, idx) => (
+                                                                                                <li key={idx} className="flex items-start gap-2">
+                                                                                                    <span>•</span>
+                                                                                                    <span>{role.roleName}</span>
+                                                                                                </li>
+                                                                                            ))}
                                                                                         </ul>
                                                                                     </div>
                                                                                 )}
@@ -798,8 +794,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                 {moveImpact.impact.targetSites.count > 0 && (
                                                                                     <div>
                                                                                         <p className="text-sm font-medium text-yellow-900 mb-1">
-                                                                                            Target connections that will be disconnected (
-                                                                                            {moveImpact.impact.targetSites.count}):
+                                                                                            Target connections that will be disconnected ({moveImpact.impact.targetSites.count}):
                                                                                         </p>
                                                                                         <ul className="text-sm text-yellow-700 ml-4 space-y-1">
                                                                                             {moveImpact.impact.targetSites.details.map((target, idx) => (
@@ -813,7 +808,15 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                         </ul>
                                                                                     </div>
                                                                                 )}
+
+                                                                                {moveImpact.impact.rolePermissions.count === 0 &&
+                                                                                    moveImpact.impact.targetSites.count === 0 && (
+                                                                                        <p className="text-sm text-green-700">
+                                                                                             No roles or connections will be impacted by this move.
+                                                                                        </p>
+                                                                                    )}
                                                                             </AccordionContent>
+
                                                                         </AccordionItem>
                                                                     </Accordion>
                                                                 </div>

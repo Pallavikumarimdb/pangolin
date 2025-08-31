@@ -104,7 +104,7 @@ registry.registerPath({
                                                                 targetId: { type: "number" },
                                                                 ip: { type: "string" },
                                                                 port: { type: "number" },
-                                                                willBeRemoved: { type: "boolean" }
+                                                                willBeDisconnected: { type: "boolean" }
                                                             }
                                                         }
                                                     }
@@ -240,16 +240,18 @@ export async function getMoveImpact(
             .leftJoin(sites, eq(targets.siteId, sites.siteId))
             .where(eq(targets.resourceId, resourceId));
 
-        // Analyze which targets will be affected
-        const affectedTargetSites = resourceTargets
-            .filter(target => target.siteId && target.siteOrgId !== targetOrgId)
+        // Since siteId is now nullable, targets with cross-org sites will be disconnected 
+        // (siteId set to null) rather than removed entirely. This preserves the target
+        // but removes the site association.
+        const targetsWithCrossOrgSites = resourceTargets
+            .filter(target => target.siteId && target.siteOrgId && target.siteOrgId !== targetOrgId)
             .map(target => ({
                 siteId: target.siteId!,
                 siteName: target.siteName || 'Unknown',
                 targetId: target.targetId,
                 ip: target.ip,
                 port: target.port,
-                willBeRemoved: true // Sites from different orgs will lose connection
+                willBeDisconnected: true // Site association will be removed, but target preserved
             }));
 
         // Separate moving user from others who will lose access
@@ -284,8 +286,8 @@ export async function getMoveImpact(
                     }))
                 },
                 targetSites: {
-                    count: affectedTargetSites.length,
-                    details: affectedTargetSites
+                    count: targetsWithCrossOrgSites.length,
+                    details: targetsWithCrossOrgSites
                 },
                 movingUser: movingUserPermission ? {
                     userId: movingUserPermission.userId,
@@ -307,7 +309,7 @@ export async function getMoveImpact(
             userId: user.userId,
             rolePermissionsAffected: rolePermissionsQuery.length,
             userPermissionsAffected: otherUserPermissions.length,
-            targetSitesAffected: affectedTargetSites.length,
+            targetSitesAffected: targetsWithCrossOrgSites.length,
             totalImpact: totalImpactedPermissions
         });
 
