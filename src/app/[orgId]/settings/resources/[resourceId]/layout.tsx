@@ -14,7 +14,7 @@ import OrgProvider from "@app/providers/OrgProvider";
 import { cache } from "react";
 import { GetSiteResponse } from "@server/routers/site";
 import { getTranslations } from 'next-intl/server';
-import ResourceInfoWrapper from "./ResourceInfoWrapper";
+import ResourceInfoBox from "./ResourceInfoBox";
 
 interface ResourceLayoutProps {
     children: React.ReactNode;
@@ -109,7 +109,7 @@ export default async function ResourceLayout(props: ResourceLayoutProps) {
                     authInfo={authInfo}
                 >
                     <div className="space-y-6">
-                        <ResourceInfoWrapper resource={resource} />
+                        <ResourceInfoBox />
                         <HorizontalTabs items={navItems}>
                             {children}
                         </HorizontalTabs>
