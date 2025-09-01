@@ -453,7 +453,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
             warnings.push({
                 type: 'warning',
                 icon: <Unplug className="w-4 h-4" />,
-                message: `${impact.targetSites.count} target connection${impact.targetSites.count > 1 ? 's' : ''} will be Moved to ${moveImpact?.targetOrgName || selectedOrgName}`
+                message: `${impact.targetSites.count} target connection${impact.targetSites.count > 1 ? 's' : ''} will lose its associated site.`
             });
         }
 
@@ -798,7 +798,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                 {moveImpact.impact.targetSites.count > 0 && (
                                                                                     <div>
                                                                                         <p className="text-sm font-medium text-yellow-900 mb-1">
-                                                                                            Target connections will be Moved ({moveImpact.impact.targetSites.count}):
+                                                                                            Target connections will lose its associated site ({moveImpact.impact.targetSites.count}):
                                                                                         </p>
                                                                                         <ul className="text-sm text-yellow-700 ml-4 space-y-1">
                                                                                             {moveImpact.impact.targetSites.details.map((target, idx) => (
