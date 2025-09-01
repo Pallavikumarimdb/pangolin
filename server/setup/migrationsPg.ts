@@ -9,7 +9,7 @@ import m1 from "./scriptsPg/1.6.0";
 import m2 from "./scriptsPg/1.7.0";
 import m3 from "./scriptsPg/1.8.0";
 import m4 from "./scriptsPg/1.9.0";
-import m5 from "./scriptsPg/1.10.0"
+import m5 from "./scriptsPg/1.10.0";
 
 // THIS CANNOT IMPORT ANYTHING FROM THE SERVER
 // EXCEPT FOR THE DATABASE AND THE SCHEMA

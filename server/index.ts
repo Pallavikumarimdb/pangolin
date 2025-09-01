@@ -1,7 +1,6 @@
 #! /usr/bin/env node
 import "./extendZod.ts";
-import 'source-map-support/register.js'
-
+import 'source-map-support/register.js';
 import { runSetupFunctions } from "./setup";
 import { createApiServer } from "./apiServer";
 import { createNextServer } from "./nextServer";
