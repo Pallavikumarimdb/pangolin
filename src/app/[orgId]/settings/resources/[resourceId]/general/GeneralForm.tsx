@@ -53,8 +53,6 @@ import {
 import DomainPicker from "@app/components/DomainPicker";
 import {
     InfoIcon,
-    ShieldCheck,
-    ShieldOff,
     AlertTriangle,
     Users,
     Shield,
@@ -66,11 +64,13 @@ import {
 } from "lucide-react";
 import { build } from "@server/build";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
+import { DomainRow } from "../../../domains/DomainsTable";
 import { InfoSection, InfoSectionContent } from "@app/components/InfoSection";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@app/components/ui/dialog";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@app/components/ui/accordion";
 import { Alert, AlertDescription, AlertTitle } from "@app/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@app/components/ui/select";
+import { toASCII, toUnicode } from "punycode";
 
 type ResponseOrg = {
     orgId: string;
@@ -161,7 +161,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
 
     const [loadingPage, setLoadingPage] = useState(true);
     const [resourceFullDomain, setResourceFullDomain] = useState(
-        `${resource.ssl ? "https" : "http"}://${resource.fullDomain}`
+        `${resource.ssl ? "https" : "http"}://${toUnicode(resource.fullDomain || "")}`
     );
     const [selectedDomain, setSelectedDomain] = useState<{
         domainId: string;
@@ -242,7 +242,11 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                 });
 
             if (res?.status === 200) {
-                const domains = res.data.data.domains;
+                const rawDomains = res.data.data.domains as DomainRow[];
+                const domains = rawDomains.map((domain) => ({
+                    ...domain,
+                    baseDomain: toUnicode(domain.baseDomain),
+                }));
                 setBaseDomains(domains);
                 setFormKey((key) => key + 1);
             }
@@ -267,7 +271,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                 {
                     enabled: data.enabled,
                     name: data.name,
-                    subdomain: data.subdomain,
+                    subdomain: data.subdomain ? toASCII(data.subdomain) : undefined,
                     domainId: data.domainId,
                     proxyPort: data.proxyPort,
                     // ...(!resource.http && {
@@ -292,13 +296,13 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                 description: t("resourceUpdatedDescription")
             });
 
-            const resourceData = res.data.data;
+            const resource = res.data.data;
 
             updateResource({
                 enabled: data.enabled,
                 name: data.name,
                 subdomain: data.subdomain,
-                fullDomain: resourceData.fullDomain,
+                fullDomain: resource.fullDomain,
                 proxyPort: data.proxyPort,
                 // ...(!resource.http && {
                 //     enableProxy: data.enableProxy
@@ -812,7 +816,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                 {moveImpact.impact.rolePermissions.count === 0 &&
                                                                                     moveImpact.impact.targetSites.count === 0 && (
                                                                                         <p className="text-sm text-green-700">
-                                                                                             No roles or connections will be impacted by this move.
+                                                                                            No roles or connections will be impacted by this move.
                                                                                         </p>
                                                                                     )}
                                                                             </AccordionContent>
@@ -933,7 +937,6 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                         setEditDomainOpen(false);
 
                                         toast({
-                                            title: "Domain sanitized",
                                             description: `Final domain: ${sanitizedFullDomain}`,
                                         });
                                     }
