@@ -107,8 +107,7 @@ export const targets = pgTable("targets", {
     siteId: integer("siteId")
         .references(() => sites.siteId, {
             onDelete: "cascade"
-        })
-        .notNull(),
+        }),
     ip: varchar("ip").notNull(),
     method: varchar("method"),
     port: integer("port").notNull(),

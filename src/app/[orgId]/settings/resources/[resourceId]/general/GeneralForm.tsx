@@ -453,7 +453,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
             warnings.push({
                 type: 'warning',
                 icon: <Unplug className="w-4 h-4" />,
-                message: `${impact.targetSites.count} target connection${impact.targetSites.count > 1 ? 's' : ''} will be disconnected`
+                message: `${impact.targetSites.count} target connection${impact.targetSites.count > 1 ? 's' : ''} will be Moved to ${moveImpact?.targetOrgName || selectedOrgName}`
             });
         }
 
@@ -685,7 +685,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                             placeholder={
                                                                 orgs.length === 0
                                                                     ? "No other organizations"
-                                                                    : "Select target organization"
+                                                                    : "Select organization"
                                                             }
                                                         />
                                                     </SelectTrigger>
@@ -727,8 +727,8 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                 Move Resource to {selectedOrgName}?
                                                             </DialogTitle>
                                                             <DialogDescription>
-                                                                This will move <span className="font-medium">"{resource.name}"</span>
-                                                                from <span className="font-medium">{moveImpact?.currentOrgName || 'current organization'}</span>
+                                                                This will move <span className="font-medium">"{resource.name}" </span>
+                                                                from <span className="font-medium">{moveImpact?.currentOrgName || 'current organization'} </span>
                                                                 to <span className="font-medium">{moveImpact?.targetOrgName || selectedOrgName}</span>.
                                                                 Please review the impact below.
                                                             </DialogDescription>
@@ -798,7 +798,7 @@ export default function GeneralForm({ fetchedOrgs }: GeneralFormProps) {
                                                                                 {moveImpact.impact.targetSites.count > 0 && (
                                                                                     <div>
                                                                                         <p className="text-sm font-medium text-yellow-900 mb-1">
-                                                                                            Target connections that will be disconnected ({moveImpact.impact.targetSites.count}):
+                                                                                            Target connections will be Moved ({moveImpact.impact.targetSites.count}):
                                                                                         </p>
                                                                                         <ul className="text-sm text-yellow-700 ml-4 space-y-1">
                                                                                             {moveImpact.impact.targetSites.details.map((target, idx) => (
