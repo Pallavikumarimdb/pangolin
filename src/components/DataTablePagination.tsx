@@ -19,11 +19,13 @@ import { useTranslations } from "next-intl";
 interface DataTablePaginationProps<TData> {
     table: Table<TData>;
     onPageSizeChange?: (pageSize: number) => void;
+    renderAdditionalControls?: () => React.ReactNode;
 }
 
 export function DataTablePagination<TData>({
     table,
-    onPageSizeChange
+    onPageSizeChange,
+    renderAdditionalControls
 }: DataTablePaginationProps<TData>) {
     const t = useTranslations();
 
@@ -57,6 +59,11 @@ export function DataTablePagination<TData>({
                         ))}
                     </SelectContent>
                 </Select>
+                {renderAdditionalControls && (
+                    <div className="flex items-center space-x-2">
+                        {renderAdditionalControls()}
+                    </div>
+                )}
             </div>
 
             <div className="flex items-center space-x-3 lg:space-x-8">

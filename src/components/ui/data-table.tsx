@@ -9,7 +9,9 @@ import {
     SortingState,
     getSortedRowModel,
     ColumnFiltersState,
-    getFilteredRowModel
+    getFilteredRowModel,
+    VisibilityState,
+    Column
 } from "@tanstack/react-table";
 import {
     Table,
@@ -23,7 +25,7 @@ import { Button } from "@app/components/ui/button";
 import { useEffect, useMemo, useState } from "react";
 import { Input } from "@app/components/ui/input";
 import { DataTablePagination } from "@app/components/DataTablePagination";
-import { Plus, Search, RefreshCw } from "lucide-react";
+import { Plus, Search, RefreshCw, Settings2 } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -32,6 +34,12 @@ import {
 } from "@app/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@app/components/ui/tabs";
 import { useTranslations } from "next-intl";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuCheckboxItem,
+    DropdownMenuTrigger
+} from "@app/components/ui/dropdown-menu";
 
 const STORAGE_KEYS = {
     PAGE_SIZE: 'datatable-page-size',
@@ -93,6 +101,7 @@ type DataTableProps<TData, TValue> = {
     defaultTab?: string;
     persistPageSize?: boolean | string;
     defaultPageSize?: number;
+    enableColumnToggle?: boolean;
 };
 
 export function DataTable<TData, TValue>({
@@ -109,7 +118,8 @@ export function DataTable<TData, TValue>({
     tabs,
     defaultTab,
     persistPageSize = false,
-    defaultPageSize = 20
+    defaultPageSize = 20,
+    enableColumnToggle = true
 }: DataTableProps<TData, TValue>) {
     const t = useTranslations();
     
@@ -129,6 +139,7 @@ export function DataTable<TData, TValue>({
     );
     const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
     const [globalFilter, setGlobalFilter] = useState<any>([]);
+    const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
     const [activeTab, setActiveTab] = useState<string>(
         defaultTab || tabs?.[0]?.id || ""
     );
@@ -157,6 +168,7 @@ export function DataTable<TData, TValue>({
         onColumnFiltersChange: setColumnFilters,
         getFilteredRowModel: getFilteredRowModel(),
         onGlobalFilterChange: setGlobalFilter,
+        onColumnVisibilityChange: setColumnVisibility,
         initialState: {
             pagination: {
                 pageSize: pageSize,
@@ -166,7 +178,8 @@ export function DataTable<TData, TValue>({
         state: {
             sorting,
             columnFilters,
-            globalFilter
+            globalFilter,
+            columnVisibility
         }
     });
 
@@ -198,6 +211,43 @@ export function DataTable<TData, TValue>({
             setStoredPageSize(newPageSize, tableId);
         }
     };
+
+    const getColumnLabel = (column: Column<any, any>) => {
+        return typeof column.columnDef.header === "string" ? 
+        column.columnDef.header : 
+        column.id; // fallback to id if header is JSX
+    };
+
+
+    const renderColumnToggle = () => {
+        if (!enableColumnToggle) return null;
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                        <Settings2 className="mr-2 h-4 w-4" />
+                        {t("columns")}
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                    {table.getAllColumns()
+                        .filter((column) => column.getCanHide())
+                        .map((column) => (
+                            <DropdownMenuCheckboxItem
+                                key={column.id}
+                                className="capitalize"
+                                checked={column.getIsVisible()}
+                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                            >
+                                {getColumnLabel(column)}
+                            </DropdownMenuCheckboxItem>
+                        ))}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    };
+
 
     return (
         <div className="container mx-auto max-w-12xl">
@@ -312,6 +362,7 @@ export function DataTable<TData, TValue>({
                         <DataTablePagination 
                             table={table} 
                             onPageSizeChange={handlePageSizeChange}
+                            renderAdditionalControls={renderColumnToggle}
                         />
                     </div>
                 </CardContent>
