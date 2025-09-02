@@ -18,7 +18,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
     DropdownMenuCheckboxItem,
-    DropdownMenuSeparator
 } from "@app/components/ui/dropdown-menu";
 import { Button } from "@app/components/ui/button";
 import {
@@ -30,9 +29,6 @@ import {
     ShieldCheck,
     RefreshCw,
     Settings2,
-    Wifi,
-    WifiOff,
-    Clock,
     Plus,
     Search,
     ChevronDown,
@@ -73,14 +69,6 @@ import { useSearchParams } from "next/navigation";
 import EditInternalResourceDialog from "@app/components/EditInternalResourceDialog";
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
-import { Badge } from "@app/components/ui/badge";
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger
-} from "@app/components/ui/tooltip";
-import { useResourceHealth } from "@app/hooks/useResourceHealth";
 
 export type ResourceRow = {
     id: number;
@@ -162,25 +150,6 @@ const setStoredPageSize = (pageSize: number, tableId?: string): void => {
 };
 
 
-function StatusIcon({ status, className = "" }: {
-    status: 'checking' | 'online' | 'offline' | undefined;
-    className?: string;
-}) {
-    const iconClass = `h-4 w-4 ${className}`;
-
-    switch (status) {
-        case 'checking':
-            return <Clock className={`${iconClass} text-yellow-500 animate-pulse`} />;
-        case 'online':
-            return <Wifi className={`${iconClass} text-green-500`} />;
-        case 'offline':
-            return <WifiOff className={`${iconClass} text-red-500`} />;
-        default:
-            return null;
-    }
-}
-
-
 export default function ResourcesTable({
     resources,
     internalResources,
@@ -203,9 +172,6 @@ export default function ResourcesTable({
     const [internalPageSize, setInternalPageSize] = useState<number>(() =>
         getStoredPageSize('internal-resources', 20)
     );
-
-    const { resourceStatus, targetStatus } = useResourceHealth(orgId, resources);
-
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] =
@@ -315,39 +281,6 @@ export default function ResourcesTable({
                 />
                 <Search className="h-4 w-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
             </div>
-        );
-    };
-
-    const getColumnToggle = () => {
-        const table = currentView === "internal" ? internalTable : proxyTable;
-
-        return (
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                    <Button variant="outline">
-                        <Settings2 className="mr-2 h-4 w-4" />
-                        {t("columns")}
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                    {table.getAllColumns()
-                        .filter(column => column.getCanHide())
-                        .map(column => (
-                            <DropdownMenuCheckboxItem
-                                key={column.id}
-                                className="capitalize"
-                                checked={column.getIsVisible()}
-                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                            >
-                                {column.id === "target" ? t("target") :
-                                    column.id === "authState" ? t("authentication") :
-                                        column.id === "enabled" ? t("enabled") :
-                                            column.id === "status" ? t("status") :
-                                                column.id}
-                            </DropdownMenuCheckboxItem>
-                        ))}
-                </DropdownMenuContent>
-            </DropdownMenu>
         );
     };
 
@@ -514,18 +447,9 @@ export default function ResourcesTable({
                         <DropdownMenuContent align="start" className="min-w-[200px]">
                             {targets.map((target, idx) => {
                                 const key = `${resourceRow.id}:${target.host}:${target.port}`;
-                                const status = targetStatus[key];
-
-                                const color =
-                                    status === "online"
-                                        ? "bg-green-500"
-                                        : status === "offline"
-                                            ? "bg-red-500 "
-                                            : "bg-gray-400";
 
                                 return (
                                     <DropdownMenuItem key={idx} className="flex items-center gap-2">
-                                        <div className={`h-3 w-3 rounded-full ${color}`} />
                                         <CopyToClipboard
                                             text={`${target.host}:${target.port}`}
                                             isLink={false}
@@ -537,57 +461,6 @@ export default function ResourcesTable({
                     </DropdownMenu>
                 );
             },
-        },
-        {
-            id: "status",
-            accessorKey: "status",
-            header: t("status"),
-            cell: ({ row }) => {
-                const resourceRow = row.original;
-                const status = resourceStatus[resourceRow.id];
-
-                if (!resourceRow.enabled) {
-                    return (
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger>
-                                    <Badge variant="secondary" className="">
-                                        {t("disabled")}
-                                    </Badge>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{t("resourceDisabled")}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                    );
-                }
-
-                return (
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <div className="flex items-center space-x-2">
-                                    <StatusIcon status={status} />
-                                    <span className=" capitalize">
-                                        {status === 'checking' ? t("checking") :
-                                            status === 'online' ? t("online") :
-                                                status === 'offline' ? t("offline") : '-'}
-                                    </span>
-                                </div>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>
-                                    {status === 'checking' ? t("checkingConnection") :
-                                        status === 'online' ? t("connectionSuccessful") :
-                                            status === 'offline' ? t("connectionFailed") :
-                                                t("statusUnknown")}
-                                </p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                );
-            }
         },
         {
             accessorKey: "domain",
@@ -987,7 +860,6 @@ export default function ResourcesTable({
                                     </Button>
                                 </div>
                                 <div>
-                                    {getColumnToggle()}
                                     {getActionButton()}
                                 </div>
                             </div>
@@ -1072,6 +944,34 @@ export default function ResourcesTable({
                                     <DataTablePagination
                                         table={proxyTable}
                                         onPageSizeChange={handleProxyPageSizeChange}
+                                        renderAdditionalControls={() => (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline">
+                                                        <Settings2 className="mr-2 h-4 w-4" />
+                                                        {t("columns")}
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                    {proxyTable.getAllColumns()
+                                                        .filter(column => column.getCanHide())
+                                                        .map(column => (
+                                                            <DropdownMenuCheckboxItem
+                                                                key={column.id}
+                                                                className="capitalize"
+                                                                checked={column.getIsVisible()}
+                                                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                                            >
+                                                                {column.id === "target" ? t("target") :
+                                                                    column.id === "authState" ? t("authentication") :
+                                                                        column.id === "enabled" ? t("enabled") :
+                                                                            column.id === "status" ? t("status") :
+                                                                                column.id}
+                                                            </DropdownMenuCheckboxItem>
+                                                        ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
                                     />
                                 </div>
                             </TabsContent>
@@ -1173,6 +1073,34 @@ export default function ResourcesTable({
                                     <DataTablePagination
                                         table={internalTable}
                                         onPageSizeChange={handleInternalPageSizeChange}
+                                        renderAdditionalControls={() => (
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="outline">
+                                                        <Settings2 className="mr-2 h-4 w-4" />
+                                                        {t("columns")}
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end" className="w-48">
+                                                    {internalTable.getAllColumns()
+                                                        .filter(column => column.getCanHide())
+                                                        .map(column => (
+                                                            <DropdownMenuCheckboxItem
+                                                                key={column.id}
+                                                                className="capitalize"
+                                                                checked={column.getIsVisible()}
+                                                                onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                                                            >
+                                                                {column.id === "target" ? t("target") :
+                                                                    column.id === "authState" ? t("authentication") :
+                                                                        column.id === "enabled" ? t("enabled") :
+                                                                            column.id === "status" ? t("status") :
+                                                                                column.id}
+                                                            </DropdownMenuCheckboxItem>
+                                                        ))}
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        )}
                                     />
                                 </div>
                             </TabsContent>

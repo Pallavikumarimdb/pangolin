@@ -306,20 +306,6 @@ authenticated.get(
     resource.listResources
 );
 
-authenticated.post(
-    "/org/:orgId/resources/tcp-check",
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.tcpCheck),
-    resource.tcpCheck
-);
-
-authenticated.post(
-    "/org/:orgId/resources/tcp-check-batch",
-    verifyOrgAccess,
-    verifyUserHasAction(ActionsEnum.batchTcpCheck),
-    resource.batchTcpCheck
-);
-
 authenticated.get(
     "/org/:orgId/user-resources",
     verifyOrgAccess,
