@@ -91,7 +91,8 @@ export default async function ResourcesPage(props: ResourcesPageProps) {
           ? "protected"
           : "not_protected",
       enabled: resource.enabled,
-      domainId: resource.domainId || undefined
+      domainId: resource.domainId || undefined,
+      targets: resource.targets
     };
   });
 

@@ -374,7 +374,7 @@ export default function ResourcesTable({
             },
             cell: ({ row }) => {
                 const resourceRow = row.original as ResourceRow & {
-                    targets?: { host: string; port: number }[];
+                    targets?: { ip: string; port: number }[];
                 };
 
                 const targets = resourceRow.targets ?? [];
@@ -400,12 +400,10 @@ export default function ResourcesTable({
 
                         <DropdownMenuContent align="start" className="min-w-[200px]">
                             {targets.map((target, idx) => {
-                                const key = `${resourceRow.id}:${target.host}:${target.port}`;
-
                                 return (
                                     <DropdownMenuItem key={idx} className="flex items-center gap-2">
                                         <CopyToClipboard
-                                            text={`${target.host}:${target.port}`}
+                                            text={`${target.ip}:${target.port}`}
                                             isLink={false}
                                         />
                                     </DropdownMenuItem>
