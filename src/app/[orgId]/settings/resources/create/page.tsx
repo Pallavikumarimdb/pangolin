@@ -91,6 +91,8 @@ import { DockerManager, DockerState } from "@app/lib/docker";
 import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { toASCII, toUnicode } from 'punycode';
 import { DomainRow } from "../../../../../components/DomainsTable";
+import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
+
 
 const baseResourceFormSchema = z.object({
     name: z.string().min(1).max(255),
@@ -326,10 +328,17 @@ export default function Page() {
                 http: baseData.http
             };
 
+            let sanitizedSubdomain: string | undefined;
+
             if (isHttp) {
                 const httpData = httpForm.getValues();
+
+                sanitizedSubdomain = httpData.subdomain
+                    ? finalizeSubdomainSanitize(httpData.subdomain)
+                    : undefined;
+
                 Object.assign(payload, {
-                    subdomain: httpData.subdomain ? toASCII(httpData.subdomain) : undefined,
+                    subdomain: sanitizedSubdomain ? toASCII(sanitizedSubdomain) : undefined,
                     domainId: httpData.domainId,
                     protocol: "tcp"
                 });
@@ -360,6 +369,10 @@ export default function Page() {
             if (res && res.status === 201) {
                 const id = res.data.data.resourceId;
                 setResourceId(id);
+
+                toast({
+                    description: `Subdomain: ${sanitizedSubdomain}`,
+                });
 
                 // Create targets if any exist
                 if (targets.length > 0) {
