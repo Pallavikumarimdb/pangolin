@@ -35,7 +35,11 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
     const navItems = [
         {
             title: t('general'),
-            href: "/{orgId}/settings/sites/{niceId}/general"
+            href: `/${params.orgId}/settings/sites/${params.niceId}/general`
+        },
+        {
+            title: t('resources'),
+            href: `/${params.orgId}/settings/sites/${params.niceId}/resources`
         }
     ];
 
