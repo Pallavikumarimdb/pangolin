@@ -109,6 +109,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/site/:siteId/proxy-resources",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listSiteProxyResources),
+    site.listSiteProxyResources
+);
+
+authenticated.get(
     "/org/:orgId/pick-site-defaults",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createSite),
