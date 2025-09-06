@@ -431,12 +431,15 @@ export default function SiteResourcesSummary({
             <SettingsContainer>
                 <SettingsSection>
                     <SettingsSectionHeader>
-                        <SettingsSectionTitle>
-                            Site Resources
-                        </SettingsSectionTitle>
-                        <SettingsSectionDescription>
-                            List of all resources connected to this site.
-                        </SettingsSectionDescription>
+                        <div className="flex w-full items-center justify-between">
+                            <div>
+                                <SettingsSectionTitle>Site Resources</SettingsSectionTitle>
+                                <SettingsSectionDescription>
+                                    List of all resources connected to this site.
+                                </SettingsSectionDescription>
+                            </div>
+                            <div>{getSearchInput()}</div>
+                        </div>
                     </SettingsSectionHeader>
 
                     <SettingsSectionBody>
