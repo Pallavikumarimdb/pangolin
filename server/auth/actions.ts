@@ -19,6 +19,7 @@ export enum ActionsEnum {
     getSite = "getSite",
     listSites = "listSites",
     updateSite = "updateSite",
+    listSiteProxyResources= "listSiteProxyResources",
     createResource = "createResource",
     deleteResource = "deleteResource",
     getResource = "getResource",

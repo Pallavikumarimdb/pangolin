@@ -8,18 +8,8 @@ import { toUnicode } from "punycode";
 import { useSiteContext } from "@app/hooks/useSiteContext";
 import { createApiClient } from "@app/lib/api";
 import { useEnvContext } from "@app/hooks/useEnvContext";
-import {
-    SettingsContainer,
-    SettingsSection,
-    SettingsSectionHeader,
-    SettingsSectionTitle,
-    SettingsSectionDescription,
-    SettingsSectionBody,
-    SettingsSectionForm
-} from "@app/components/Settings";
 import { useTranslations } from "next-intl";
 
-// Define the types locally since they might not be exported from the backend
 type SiteResourceRow = {
     id: number;
     name: string;
@@ -133,28 +123,12 @@ export default function SiteResourcesPage() {
 
     return (
         <>
-            <SettingsContainer>
-                <SettingsSection>
-                    <SettingsSectionHeader>
-                        <SettingsSectionTitle>
-                            Site Resources
-                        </SettingsSectionTitle>
-                        <SettingsSectionDescription>
-                            List of all resources connected to this site.
-                        </SettingsSectionDescription>
-                    </SettingsSectionHeader>
-
-                    <SettingsSectionBody>
-                        <SiteResourcesTable
-                            resources={resources}
-                            orgId={orgId}
-                            siteId={site.siteId}
-                            siteNiceId={site.niceId}
-                        />
-
-                    </SettingsSectionBody>
-                </SettingsSection>
-            </SettingsContainer>
+            <SiteResourcesTable
+                resources={resources}
+                orgId={orgId}
+                siteId={site.siteId}
+                siteNiceId={site.niceId}
+            />
         </>
     );
 }
