@@ -38,8 +38,8 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             href: `/${params.orgId}/settings/sites/${params.niceId}/general`
         },
         {
-            title: t('resources'),
-            href: `/${params.orgId}/settings/sites/${params.niceId}/resources`
+            title: t('configuration'),
+            href: `/${params.orgId}/settings/sites/${params.niceId}/configuration`
         }
     ];
 

@@ -1519,5 +1519,6 @@
     "domainPickerSubdomainSanitized": "Subdomain sanitized",
     "domainPickerSubdomainCorrected": "\"{sub}\" was corrected to \"{sanitized}\"",
     "resourceAddEntrypointsEditFile": "Edit file: config/traefik/traefik_config.yml",
-    "resourceExposePortsEditFile": "Edit file: docker-compose.yml"
+    "resourceExposePortsEditFile": "Edit file: docker-compose.yml",
+    "configuration": "Configuration"
 }
