@@ -131,7 +131,6 @@ export default function SiteResourcesSummary({
     orgId,
 }: SiteResourcesSummaryProps) {
 
-    const resourceCount = resources.length;
     const router = useRouter();
     const searchParams = useSearchParams();
     const t = useTranslations();
@@ -146,7 +145,7 @@ export default function SiteResourcesSummary({
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [selectedResource, setSelectedResource] =
-        useState<ResourceRow | null>();
+        useState<SiteResourceRow | null>();
     const [proxySorting, setProxySorting] = useState<SortingState>([]);
     const [proxyColumnFilters, setProxyColumnFilters] =
         useState<ColumnFiltersState>([]);
@@ -205,7 +204,7 @@ export default function SiteResourcesSummary({
             });
     }
 
-    const proxyColumns: ColumnDef<ResourceRow>[] = [
+    const proxyColumns: ColumnDef<SiteResourceRow>[] = [
         {
             accessorKey: "name",
             header: ({ column }) => {
