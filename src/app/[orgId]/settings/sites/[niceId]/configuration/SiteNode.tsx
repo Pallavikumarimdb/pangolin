@@ -14,8 +14,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import ResourceItem from "./ResourceItem";
-import TargetItem from "./TargetItem";
+import ResourceItem from "./resourceItem";
+import TargetItem from "./targetItem";
 import { SiteNodeProps } from "./siteConfigTypes";
 
 

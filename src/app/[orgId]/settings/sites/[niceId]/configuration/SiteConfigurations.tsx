@@ -14,11 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import SiteNode from './siteNode';
 import { SiteResourcesTreeProps } from './siteConfigTypes';
+import SiteNode from './siteNode';
 
 
-export default function SiteResourcesDirectoryTree({
+export default function SiteConfigDirectoryTree({
   site,
   resources,
   targets,

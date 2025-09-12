@@ -9,7 +9,6 @@ import { useEnvContext } from '@app/hooks/useEnvContext';
 import { useTranslations } from 'next-intl';
 import { formatAxiosError } from '@app/lib/api';
 import { toast } from '@app/hooks/useToast';
-import SiteResourcesDirectoryTree from './SiteConfigurations';
 import ConfirmDeleteDialog from '@app/components/ConfirmDeleteDialog';
 import {
     SettingsContainer,
@@ -20,6 +19,7 @@ import {
 } from '@app/components/Settings';
 import { useSiteContext } from '@app/hooks/useSiteContext';
 import { ListSiteResourcesResponse, ListSiteTargetsResponse, SiteResourceRow, SiteTargetRow } from './siteConfigTypes';
+import SiteConfigDirectoryTree from './siteConfigurations';
 
 
 export default function AllSiteResourcesPage() {
@@ -221,7 +221,7 @@ export default function AllSiteResourcesPage() {
             <SettingsContainer>
                 <SettingsSection>
                     <SettingsSectionBody>
-                        <SiteResourcesDirectoryTree
+                        <SiteConfigDirectoryTree
                             site={site}
                             resources={resources}
                             targets={targets}
