@@ -116,6 +116,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/site/:siteId/targets",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.listSiteTargets),
+    site.listSiteTargets
+);
+
+authenticated.get(
     "/org/:orgId/pick-site-defaults",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.createSite),

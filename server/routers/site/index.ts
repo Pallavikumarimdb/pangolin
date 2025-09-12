@@ -7,3 +7,4 @@ export * from "./listSiteRoles";
 export * from "./pickSiteDefaults";
 export * from "./socketIntegration";
 export * from "./listResourcesForSite";
+export * from "./listSiteTargets";

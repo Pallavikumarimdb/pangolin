@@ -9,7 +9,7 @@ import { useEnvContext } from '@app/hooks/useEnvContext';
 import { useTranslations } from 'next-intl';
 import { formatAxiosError } from '@app/lib/api';
 import { toast } from '@app/hooks/useToast';
-import SiteResourcesDirectoryTree from './SiteResources';
+import SiteResourcesDirectoryTree from './SiteConfigurations';
 import ConfirmDeleteDialog from '@app/components/ConfirmDeleteDialog';
 import {
     SettingsContainer,
@@ -19,56 +19,8 @@ import {
     SettingsSectionBody,
 } from '@app/components/Settings';
 import { useSiteContext } from '@app/hooks/useSiteContext';
+import { ListSiteResourcesResponse, ListSiteTargetsResponse, SiteResourceRow, SiteTargetRow } from './siteConfigTypes';
 
-
-type SiteResourceRow = {
-    id: number;
-    name: string;
-    orgId: string;
-    domain: string;
-    authState: string;
-    http: boolean;
-    protocol: string;
-    proxyPort: number | null;
-    enabled: boolean;
-    domainId?: string;
-};
-
-type SiteData = {
-    siteId: number;
-    name: string;
-    niceId: string;
-    resources: SiteResourceRow[];
-};
-
-
-type ListSiteResourcesResponse = {
-    resources: Array<{
-        resourceId: number;
-        name: string;
-        orgId: string;
-        niceId: string;
-        subdomain: string;
-        fullDomain: string;
-        domainId: string;
-        ssl: boolean;
-        sso: boolean;
-        http: boolean;
-        protocol: string;
-        proxyPort: number;
-        emailWhitelistEnabled: boolean;
-        applyRules: boolean;
-        enabled: boolean;
-        enableProxy: boolean;
-        skipToIdpId: number;
-        targetId: number;
-        ip: string;
-        method: string;
-        port: number;
-        baseDomain: string;
-    }>;
-    pagination: { total: number; limit: number; offset: number };
-};
 
 export default function AllSiteResourcesPage() {
     const t = useTranslations();
@@ -78,11 +30,11 @@ export default function AllSiteResourcesPage() {
     const { site } = useSiteContext();
     const orgId = params.orgId;
 
-    const [sites, setSites] = useState<SiteData[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedResource, setSelectedResource] = useState<SiteResourceRow | null>(null);
-    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [isDeleteResourceModalOpen, setIsDeleteResourceModalOpen] = useState(false);
     const [resources, setResources] = useState<SiteResourceRow[]>([]);
+    const [targets, setTargets] = useState<SiteTargetRow[]>([]);
 
     useEffect(() => {
         if (!orgId) {
@@ -90,15 +42,15 @@ export default function AllSiteResourcesPage() {
             return;
         }
 
-        const fetchResources = async () => {
+        const fetchData = async () => {
             try {
-                const res = await api.get<AxiosResponse<ListSiteResourcesResponse>>(
+                const resourcesRes = await api.get<AxiosResponse<ListSiteResourcesResponse>>(
                     `/org/${orgId}/site/${site.siteId}/proxy-resources`
                 );
 
-                const siteProxyResources = res.data.data.resources;
+                const siteProxyResources = resourcesRes.data.data.resources;
 
-                const mapped: SiteResourceRow[] = siteProxyResources.map((resource) => ({
+                const mappedResources: SiteResourceRow[] = siteProxyResources.map((resource) => ({
                     id: resource.resourceId,
                     name: resource.name,
                     orgId: orgId,
@@ -116,31 +68,54 @@ export default function AllSiteResourcesPage() {
                             : "not_protected",
                     enabled: resource.enabled,
                     domainId: resource.domainId || undefined,
-                    targetIp: resource.ip,
-                    targetPort: resource.port,
                 }));
-                if (res.status === 200) {
+
+                const targetsRes = await api.get<AxiosResponse<ListSiteTargetsResponse>>(
+                    `/org/${orgId}/site/${site.siteId}/targets`
+                );
+
+                const siteTargets = targetsRes.data.data.targets;
+
+                const mappedTargets: SiteTargetRow[] = siteTargets.map((target) => ({
+                    id: target.targetId,
+                    resourceId: target.resourceId,
+                    siteId: target.siteId,
+                    ip: target.ip,
+                    method: target.method,
+                    port: target.port,
+                    internalPort: target.internalPort,
+                    enabled: target.enabled,
+                    resourceName: target.resourceName,
+                    resourceNiceId: target.resourceNiceId,
+                    protocol: target.protocol,
+                }));
+
+                if (resourcesRes.status === 200 && targetsRes.status === 200) {
                     setLoading(false);
                 }
 
-                setResources(mapped);
+                setResources(mappedResources);
+                setTargets(mappedTargets);
             } catch (e) {
-                console.error("Failed to fetch site proxy resources:", e);
+                console.error("Failed to fetch site data:", e);
+                setLoading(false);
             }
         };
 
-        fetchResources();
+        fetchData();
     }, [api, params.orgId, site]);
 
     const deleteResource = async (resourceId: number) => {
         try {
             await api.delete(`/resource/${resourceId}`);
 
-            setSites(prevSites =>
-                prevSites.map(site => ({
-                    ...site,
-                    resources: site.resources.filter(r => r.id !== resourceId)
-                }))
+            setResources(prevResources => 
+                prevResources.filter(r => r.id !== resourceId)
+            );
+
+            // Also remove any targets that belonged to this resource
+            setTargets(prevTargets =>
+                prevTargets.filter(t => t.resourceId !== resourceId)
             );
 
             toast({
@@ -148,7 +123,7 @@ export default function AllSiteResourcesPage() {
                 description: t("resourceDeletedDescription")
             });
 
-            setIsDeleteModalOpen(false);
+            setIsDeleteResourceModalOpen(false);
             setSelectedResource(null);
         } catch (e) {
             console.error(t("resourceErrorDelte"), e);
@@ -166,15 +141,12 @@ export default function AllSiteResourcesPage() {
                 enabled: val
             });
 
-            setSites(prevSites =>
-                prevSites.map(site => ({
-                    ...site,
-                    resources: site.resources.map(resource =>
-                        resource.id === resourceId
-                            ? { ...resource, enabled: val }
-                            : resource
-                    )
-                }))
+            setResources(prevResources =>
+                prevResources.map(resource =>
+                    resource.id === resourceId
+                        ? { ...resource, enabled: val }
+                        : resource
+                )
             );
 
             toast({
@@ -190,16 +162,15 @@ export default function AllSiteResourcesPage() {
         }
     };
 
-    const handleDeleteResource = (resourceId: number) => {
-        const resource = sites
-            .flatMap(site => site.resources)
-            .find(r => r.id === resourceId);
 
+    const handleDeleteResource = (resourceId: number) => {
+        const resource = resources.find(r => r.id === resourceId);
         if (resource) {
             setSelectedResource(resource);
-            setIsDeleteModalOpen(true);
+            setIsDeleteResourceModalOpen(true);
         }
     };
+
 
     if (loading) {
         return (
@@ -207,7 +178,7 @@ export default function AllSiteResourcesPage() {
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionDescription>
-                            Loading all resources across your sites...
+                            Loading resources and targets for your site...
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
@@ -224,9 +195,9 @@ export default function AllSiteResourcesPage() {
         <>
             {selectedResource && (
                 <ConfirmDeleteDialog
-                    open={isDeleteModalOpen}
+                    open={isDeleteResourceModalOpen}
                     setOpen={(val) => {
-                        setIsDeleteModalOpen(val);
+                        setIsDeleteResourceModalOpen(val);
                         setSelectedResource(null);
                     }}
                     dialog={
@@ -253,6 +224,7 @@ export default function AllSiteResourcesPage() {
                         <SiteResourcesDirectoryTree
                             site={site}
                             resources={resources}
+                            targets={targets}
                             orgId={orgId}
                             onToggleResourceEnabled={toggleResourceEnabled}
                             onDeleteResource={handleDeleteResource}
