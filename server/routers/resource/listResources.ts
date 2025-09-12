@@ -47,6 +47,7 @@ type JoinedRow = {
     niceId: string;
     name: string;
     ssl: boolean;
+    niceId: string;
     fullDomain: string | null;
     passwordId: number | null;
     sso: boolean;
@@ -79,7 +80,7 @@ export type ResourceWithTargets = {
     proxyPort: number | null;
     enabled: boolean;
     domainId: string | null;
-    niceId: string | null;
+    niceId: string;
     targets: Array<{
         targetId: number;
         ip: string;
@@ -261,6 +262,7 @@ export async function listResources(
                     proxyPort: row.proxyPort,
                     enabled: row.enabled,
                     domainId: row.domainId,
+                    niceId: row.niceId,
                     targets: [],
                 };
                 map.set(row.resourceId, entry);
