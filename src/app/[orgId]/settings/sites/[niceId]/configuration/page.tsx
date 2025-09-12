@@ -18,8 +18,8 @@ import {
     SettingsSectionBody,
 } from '@app/components/Settings';
 import { useSiteContext } from '@app/hooks/useSiteContext';
-import { ListSiteResourcesResponse, ListSiteTargetsResponse, SiteResourceRow, SiteTargetRow } from './siteConfigTypes';
-import SiteConfigDirectoryTree from './siteConfigurations';
+import { ListSiteResourcesResponse, ListSiteTargetsResponse, SiteResourceRow, SiteTargetRow } from './siteConfigComponents/siteConfigTypes';
+import SiteConfigDirectoryTree from './siteConfigComponents/siteConfigurations';
 
 
 export default function AllSiteResourcesPage() {
