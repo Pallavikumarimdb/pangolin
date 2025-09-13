@@ -106,19 +106,19 @@ const SiteNode: FC<SiteNodeProps> = ({
           <div>
             <h3 className="font-semibold text-lg">{site.name}</h3>
             <p className="text-sm text-muted-foreground">
-              Configurations attached to {site.niceId}
+              {t("configurationsAttachedTo")} {site.niceId}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline">{resourceCounts.total} resources</Badge>
-          <Badge variant="secondary">{resourceCounts.enabled} enabled</Badge>
+          <Badge variant="outline">{resourceCounts.total} {t("resources")}</Badge>
+          <Badge variant="secondary">{resourceCounts.enabled} {t("enabled")}</Badge>
           {resourceCounts.protected > 0 && (
             <Badge variant="default">
-              {resourceCounts.protected} protected
+              {resourceCounts.protected} {t("protected")}
             </Badge>
           )}
-          <Badge variant="outline">{targetCounts.total} targets</Badge>
+          <Badge variant="outline">{targetCounts.total} {t("targets")}</Badge>
         </div>
       </div>
 
@@ -137,7 +137,7 @@ const SiteNode: FC<SiteNodeProps> = ({
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 )}
                 <Waypoints className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-semibold">Resources</h4>
+                <h4 className="font-semibold">{t("resources")}</h4>
                 <Badge variant="outline">{filteredResources.length}</Badge>
               </div>
 
@@ -171,7 +171,7 @@ const SiteNode: FC<SiteNodeProps> = ({
                         >
                           <Button size="sm">
                             <Plus className="w-4 h-4 mr-1" />
-                            Create First Resource
+                            {t("createFirstResource")}
                           </Button>
                         </Link>
                       )}
@@ -193,7 +193,7 @@ const SiteNode: FC<SiteNodeProps> = ({
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 )}
                 <Target className="w-5 h-5 text-muted-foreground" />
-                <h4 className="font-semibold">Targets</h4>
+                <h4 className="font-semibold">{t("targets")}</h4>
                 <Badge variant="outline">{filteredTargets.length}</Badge>
               </div>
 

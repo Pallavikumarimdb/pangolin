@@ -1520,5 +1520,18 @@
     "domainPickerSubdomainCorrected": "\"{sub}\" was corrected to \"{sanitized}\"",
     "resourceAddEntrypointsEditFile": "Edit file: config/traefik/traefik_config.yml",
     "resourceExposePortsEditFile": "Edit file: docker-compose.yml",
-    "configuration": "Configuration"
+    "configuration": "Configuration",
+    "loadingResources": "Loading resources and targets for your site...",
+    "resourceDeleted": "Resource deleted successfully",
+    "resourceErrorDelete": "Failed to delete resource",
+    "resourceEnabled": "Resource enabled successfully",
+    "resourceDisabled": "Resource disabled successfully",
+    "resourceUpdatedSuccessfully": "Resource updated successfully",
+    "missingDomain": "Domain Missing",
+    "domainNotConfigured": "Domain not configured",
+    "protocols": "Protocols",
+    "not_protected": "Not Protected",
+    "Clear": "Clear",
+    "configurationsAttachedTo": "Configurations attached to",
+    "createFirstResource": "Create your first resource"
 }

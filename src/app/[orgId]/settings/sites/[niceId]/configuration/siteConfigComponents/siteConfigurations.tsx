@@ -79,7 +79,7 @@ export default function SiteConfigDirectoryTree({
               <SelectValue placeholder="Protocol" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Protocols</SelectItem>
+              <SelectItem value="all">{t('protocols')}</SelectItem>
               {allProtocols.map(protocol => (
                 <SelectItem key={protocol} value={protocol}>
                   {protocol.toUpperCase()}
@@ -93,18 +93,18 @@ export default function SiteConfigDirectoryTree({
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Status</SelectItem>
-              <SelectItem value="enabled">Enabled</SelectItem>
-              <SelectItem value="disabled">Disabled</SelectItem>
-              <SelectItem value="protected">Protected</SelectItem>
-              <SelectItem value="not_protected">Not Protected</SelectItem>
+              <SelectItem value="all">{t('status')}</SelectItem>
+              <SelectItem value="enabled">{t('enabled')}</SelectItem>
+              <SelectItem value="disabled">{t('disabled')}</SelectItem>
+              <SelectItem value="protected">{t('protected')}</SelectItem>
+              <SelectItem value="not_protected">{t('not_protected')}</SelectItem>
             </SelectContent>
           </Select>
 
           {hasFilters && (
             <Button variant="outline" onClick={clearFilters}>
               <Filter className="w-4 h-4 mr-2" />
-              Clear
+              {t('clear')}
             </Button>
           )}
         </div>

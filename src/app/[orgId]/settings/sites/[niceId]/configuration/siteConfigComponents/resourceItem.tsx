@@ -77,9 +77,9 @@ export default function ResourceItem({
       return (
         <div className="flex items-center gap-2">
           <Badge variant="destructive" className="text-xs">
-            Domain Missing
+            {t('missingDomain')}
           </Badge>
-          <span className="text-xs text-muted-foreground">Domain not configured</span>
+          <span className="text-xs text-muted-foreground">{t('domainNotConfigured')}</span>
         </div>
       );
     }

@@ -119,18 +119,16 @@ export default function AllSiteResourcesPage() {
             );
 
             toast({
-                title: t("resourceDeleted"),
-                description: t("resourceDeletedDescription")
+                title: t("resourceDeleted")
             });
 
             setIsDeleteResourceModalOpen(false);
             setSelectedResource(null);
         } catch (e) {
-            console.error(t("resourceErrorDelte"), e);
+            console.error(t("resourceErrorDelete"), e);
             toast({
                 variant: "destructive",
-                title: t("resourceErrorDelte"),
-                description: formatAxiosError(e, t("resourceErrorDelte"))
+                title: t("resourceErrorDelete"),
             });
         }
     };
@@ -151,13 +149,11 @@ export default function AllSiteResourcesPage() {
 
             toast({
                 title: val ? t("resourceEnabled") : t("resourceDisabled"),
-                description: t("resourceUpdatedSuccessfully")
             });
         } catch (e) {
             toast({
                 variant: "destructive",
                 title: t("resourcesErrorUpdate"),
-                description: formatAxiosError(e, t("resourcesErrorUpdateDescription"))
             });
         }
     };
@@ -178,7 +174,7 @@ export default function AllSiteResourcesPage() {
                 <SettingsSection>
                     <SettingsSectionHeader>
                         <SettingsSectionDescription>
-                            Loading resources and targets for your site...
+                            {t("loadingResources")}
                         </SettingsSectionDescription>
                     </SettingsSectionHeader>
                     <SettingsSectionBody>
