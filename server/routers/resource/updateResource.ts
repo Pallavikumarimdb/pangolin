@@ -123,7 +123,7 @@ const updateHttpResourceBodySchema = z
         },
         { message: "Exactly one hostname must be marked as primary" }
         
-    )
+    );
 
 export type UpdateResourceResponse = Resource & {
     hostnames?: Array<{
