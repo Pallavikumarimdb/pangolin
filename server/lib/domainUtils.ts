@@ -4,14 +4,24 @@ import { eq, and } from "drizzle-orm";
 import { subdomainSchema } from "@server/lib/schemas";
 import { fromError } from "zod-validation-error";
 
-export type DomainValidationResult = {
-    success: true;
+type ValidatedHostname = {
+    domainId: string;
+    subdomain?: string | null;
     fullDomain: string;
-    subdomain: string | null;
-} | {
-    success: false;
-    error: string;
+    baseDomain: string;
+    primary: boolean;
 };
+
+export type DomainValidationResult =
+  | {
+      success: true;
+      data: ValidatedHostname;
+    }
+  | {
+      success: false;
+      error: string;
+      data?: ValidatedHostname;
+    };
 
 /**
  * Validates a domain and constructs the full domain based on domain type and subdomain.
@@ -22,26 +32,31 @@ export type DomainValidationResult = {
  * @returns DomainValidationResult with success status and either fullDomain/subdomain or error message
  */
 export async function validateAndConstructDomain(
-    domainId: string,
-    orgId: string,
-    subdomain?: string | null
+    hostname: {
+        domainId: string;
+        subdomain?: string | null;
+        baseDomain?: string;
+        fullDomain?: string;
+        primary: boolean;
+    },
+    orgId: string
 ): Promise<DomainValidationResult> {
     try {
         // Query domain with organization access check
         const [domainRes] = await db
             .select()
             .from(domains)
-            .where(eq(domains.domainId, domainId))
+            .where(eq(domains.domainId, hostname.domainId))
             .leftJoin(
                 orgDomains,
-                and(eq(orgDomains.orgId, orgId), eq(orgDomains.domainId, domainId))
+                and(eq(orgDomains.orgId, orgId), eq(orgDomains.domainId, hostname.domainId))
             );
 
         // Check if domain exists
         if (!domainRes || !domainRes.domains) {
             return {
                 success: false,
-                error: `Domain with ID ${domainId} not found`
+                error: `Domain with ID ${hostname.domainId} not found`
             };
         }
 
@@ -49,7 +64,7 @@ export async function validateAndConstructDomain(
         if (domainRes.orgDomains && domainRes.orgDomains.orgId !== orgId) {
             return {
                 success: false,
-                error: `Organization does not have access to domain with ID ${domainId}`
+                error: `Organization does not have access to domain with ID ${hostname.domainId}`
             };
         }
 
@@ -57,17 +72,17 @@ export async function validateAndConstructDomain(
         if (!domainRes.domains.verified) {
             return {
                 success: false,
-                error: `Domain with ID ${domainId} is not verified`
+                error: `Domain with ID ${hostname.domainId} is not verified`
             };
         }
 
         // Construct full domain based on domain type
         let fullDomain = "";
-        let finalSubdomain = subdomain;
+        let finalSubdomain = hostname.subdomain;
 
         if (domainRes.domains.type === "ns") {
-            if (subdomain) {
-                fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
+            if (hostname.subdomain) {
+                fullDomain = `${hostname.subdomain}.${domainRes.domains.baseDomain}`;
             } else {
                 fullDomain = domainRes.domains.baseDomain;
             }
@@ -75,16 +90,16 @@ export async function validateAndConstructDomain(
             fullDomain = domainRes.domains.baseDomain;
             finalSubdomain = null; // CNAME domains don't use subdomains
         } else if (domainRes.domains.type === "wildcard") {
-            if (subdomain !== undefined && subdomain !== null) {
+            if (hostname.subdomain !== undefined && hostname.subdomain !== null) {
                 // Validate subdomain format for wildcard domains
-                const parsedSubdomain = subdomainSchema.safeParse(subdomain);
+                const parsedSubdomain = subdomainSchema.safeParse(hostname.subdomain);
                 if (!parsedSubdomain.success) {
                     return {
                         success: false,
                         error: fromError(parsedSubdomain.error).toString()
                     };
                 }
-                fullDomain = `${subdomain}.${domainRes.domains.baseDomain}`;
+                fullDomain = `${hostname.subdomain}.${domainRes.domains.baseDomain}`;
             } else {
                 fullDomain = domainRes.domains.baseDomain;
             }
@@ -100,8 +115,13 @@ export async function validateAndConstructDomain(
 
         return {
             success: true,
-            fullDomain,
-            subdomain: finalSubdomain ?? null
+            data: {
+                domainId: hostname.domainId,
+                subdomain: finalSubdomain || null,
+                fullDomain: fullDomain,
+                baseDomain: domainRes.domains.baseDomain,
+                primary: hostname.primary
+            }
         };
     } catch (error) {
         return {

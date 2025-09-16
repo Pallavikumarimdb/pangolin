@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { db } from "@server/db";
 import { Resource, resources, resourceHostnames } from "@server/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -11,7 +11,7 @@ import logger from "@server/logger";
 import stoi from "@server/lib/stoi";
 import { OpenAPITags, registry } from "@server/openApi";
 
-const getResourceSchema = z
+const getResourceHostnamesParamsSchema = z
     .object({
         resourceId: z
             .string()
@@ -23,6 +23,7 @@ const getResourceSchema = z
         orgId: z.string().optional()
     })
     .strict();
+    
 
 async function query(resourceId?: number, niceId?: string, orgId?: string) {
     if (resourceId) {
@@ -42,7 +43,19 @@ async function query(resourceId?: number, niceId?: string, orgId?: string) {
     }
 }
 
-export type GetResourceResponse = NonNullable<Awaited<ReturnType<typeof query>>>;
+export type GetResourceHostnamesResponse = {
+    resourceId: number;
+    hostMode: string;
+    hostnames: Array<{
+        hostnameId: number;
+        domainId: string;
+        subdomain?: string;
+        fullDomain: string;
+        baseDomain: string;
+        primary: boolean;
+        createdAt: string;
+    }>;
+};
 
 registry.registerPath({
     method: "get",
@@ -71,61 +84,80 @@ registry.registerPath({
     },
     responses: {}
 });
-
 export async function getResource(
-    req: Request,
-    res: Response,
-    next: NextFunction
+  req: Request,
+  res: Response,
+  next: NextFunction
 ): Promise<any> {
-    try {
-        const parsedParams = getResourceSchema.safeParse(req.params);
-        if (!parsedParams.success) {
-            return next(
-                createHttpError(
-                    HttpCode.BAD_REQUEST,
-                    fromError(parsedParams.error).toString()
-                )
-            );
-        }
+  try {
+    const parsedParams = getResourceHostnamesParamsSchema.safeParse(req.params);
+    if (!parsedParams.success) {
+      return next(
+        createHttpError(
+          HttpCode.BAD_REQUEST,
+          fromError(parsedParams.error).toString()
+        )
+      );
+    }
 
         const { resourceId, niceId, orgId } = parsedParams.data;
 
-        const resource = await query(resourceId, niceId, orgId);
+    // Use new query helper
+    const resource = await query(resourceId, niceId, orgId);
 
-        if (!resource) {
-            return next(
-                createHttpError(HttpCode.NOT_FOUND, "Resource not found")
-            );
+    if (!resource) {
+      return next(
+        createHttpError(HttpCode.NOT_FOUND, `Resource with ID ${resourceId} not found`)
+      );
+    }
+
+    // Only HTTP resources have hostnames
+        if (!resource.http) {
+            return response<GetResourceHostnamesResponse>(res, {
+                data: {
+                    resourceId: resource.resourceId,
+                    hostMode: "multi",
+                    hostnames: []
+                },
+                success: true,
+                error: false,
+                message: "Non-HTTP resources do not have hostnames",
+                status: HttpCode.OK
+            });
         }
 
-        // Get hostnames for HTTP resources
-        let hostnames: GetResourceResponse["hostnames"] = [];
-        if (resource.http) {
-            const hostnameResults = await db
-                .select()
-                .from(resourceHostnames)
-                .where(eq(resourceHostnames.resourceId, resourceId));
+        // Get hostnames for the resource
+        const hostnames = await db
+            .select({
+                hostnameId: resourceHostnames.hostnameId,
+                domainId: resourceHostnames.domainId,
+                subdomain: resourceHostnames.subdomain,
+                fullDomain: resourceHostnames.fullDomain,
+                baseDomain: resourceHostnames.baseDomain,
+                primary: resourceHostnames.primary,
+                createdAt: resourceHostnames.createdAt
+            })
+            .from(resourceHostnames)
+            .where(eq(resourceHostnames.resourceId, resource.resourceId))
+            .orderBy(resourceHostnames.primary, resourceHostnames.createdAt);
 
-            hostnames = hostnameResults.map(h => ({
-                hostnameId: h.hostnameId!,
-                domainId: h.domainId,
-                subdomain: h.subdomain || undefined,
-                fullDomain: h.fullDomain!,
-                baseDomain: h.baseDomain!,
-                primary: h.primary
-            }));
-        }
-
-        const responseData: GetResourceResponse = {
-            ...resource,
-            ...(resource.http && { hostnames })
-        };
-
-        return response(res, {
-            data: responseData,
+        return response<GetResourceHostnamesResponse>(res, {
+            data: {
+                resourceId: resource.resourceId,
+                hostMode: resource.hostMode || "multi",
+                hostnames: hostnames.map(h => ({
+                    hostnameId: h.hostnameId,
+                    domainId: h.domainId,
+                    subdomain: h.subdomain || undefined,
+                    fullDomain: h.fullDomain,
+                    baseDomain: h.baseDomain,
+                    primary: h.primary,
+                    createdAt: h.createdAt
+                }))
+            },
             success: true,
             error: false,
-            message: "Resource retrieved successfully",
+            message: "Resource hostnames retrieved successfully",
             status: HttpCode.OK
         });
     } catch (error) {
