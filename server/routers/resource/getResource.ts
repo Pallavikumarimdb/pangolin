@@ -23,7 +23,7 @@ const getResourceHostnamesParamsSchema = z
         orgId: z.string().optional()
     })
     .strict();
-    
+
 
 async function query(resourceId?: number, niceId?: string, orgId?: string) {
     if (resourceId) {
@@ -43,8 +43,8 @@ async function query(resourceId?: number, niceId?: string, orgId?: string) {
     }
 }
 
-export type GetResourceHostnamesResponse = {
-    resourceId: number;
+export type GetResourceResponseWithHostnames = {
+    data: Resource;
     hostMode: string;
     hostnames: Array<{
         hostnameId: number;
@@ -56,6 +56,9 @@ export type GetResourceHostnamesResponse = {
         createdAt: string;
     }>;
 };
+
+export type GetResourceResponse = Resource;
+
 
 registry.registerPath({
     method: "get",
@@ -85,46 +88,43 @@ registry.registerPath({
     responses: {}
 });
 export async function getResource(
-  req: Request,
-  res: Response,
-  next: NextFunction
+    req: Request,
+    res: Response,
+    next: NextFunction
 ): Promise<any> {
-  try {
-    const parsedParams = getResourceHostnamesParamsSchema.safeParse(req.params);
-    if (!parsedParams.success) {
-      return next(
-        createHttpError(
-          HttpCode.BAD_REQUEST,
-          fromError(parsedParams.error).toString()
-        )
-      );
-    }
+    try {
+        const parsedParams = getResourceHostnamesParamsSchema.safeParse(req.params);
+        if (!parsedParams.success) {
+            return next(
+                createHttpError(
+                    HttpCode.BAD_REQUEST,
+                    fromError(parsedParams.error).toString()
+                )
+            );
+        }
 
         const { resourceId, niceId, orgId } = parsedParams.data;
 
-    // Use new query helper
-    const resource = await query(resourceId, niceId, orgId);
+        // Use new query helper
+        const resource = await query(resourceId, niceId, orgId);
 
-    if (!resource) {
-      return next(
-        createHttpError(HttpCode.NOT_FOUND, `Resource with ID ${resourceId} not found`)
-      );
-    }
+        if (!resource) {
+            return next(
+                createHttpError(HttpCode.NOT_FOUND, `Resource with ID ${resourceId} not found`)
+            );
+        }
 
-    // Only HTTP resources have hostnames
+        // Only HTTP resources have hostnames
         if (!resource.http) {
-            return response<GetResourceHostnamesResponse>(res, {
-                data: {
-                    resourceId: resource.resourceId,
-                    hostMode: "multi",
-                    hostnames: []
-                },
+            return response<GetResourceResponse>(res, {
+                data: resource,
                 success: true,
                 error: false,
-                message: "Non-HTTP resources do not have hostnames",
+                message: "Resource retrieved successfully",
                 status: HttpCode.OK
             });
         }
+
 
         // Get hostnames for the resource
         const hostnames = await db
@@ -141,9 +141,9 @@ export async function getResource(
             .where(eq(resourceHostnames.resourceId, resource.resourceId))
             .orderBy(resourceHostnames.primary, resourceHostnames.createdAt);
 
-        return response<GetResourceHostnamesResponse>(res, {
+        return response<GetResourceResponseWithHostnames>(res, {
             data: {
-                resourceId: resource.resourceId,
+                data: resource,
                 hostMode: resource.hostMode || "multi",
                 hostnames: hostnames.map(h => ({
                     hostnameId: h.hostnameId,
