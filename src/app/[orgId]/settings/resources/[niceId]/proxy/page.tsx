@@ -73,7 +73,10 @@ import {
     CircleCheck,
     CircleX,
     ArrowRight,
-    MoveRight
+    MoveRight,
+    ArrowUp,
+    Info,
+    ArrowDown
 } from "lucide-react";
 import { ContainersSelector } from "@app/components/ContainersSelector";
 import { useTranslations } from "next-intl";
@@ -98,6 +101,7 @@ import {
 import { Badge } from "@app/components/ui/badge";
 import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { HeadersInput } from "@app/components/HeadersInput";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
 
 const addTargetSchema = z.object({
     ip: z.string().refine(isTargetValid),
@@ -567,6 +571,47 @@ export default function ReverseProxyTargets(props: {
     }
 
     const columns: ColumnDef<LocalTarget>[] = [
+        {
+            id: "priority",
+            header: () => (
+                <div className="flex items-center gap-2">
+                    Priority
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                                <p>Higher priority routes are evaluated first. Use this to ensure specific paths like /api/v1 are checked before catch-all routes like /</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            ),
+            cell: ({ row }) => {
+                const targetIndex = targets.findIndex(t => t.targetId === row.original.targetId);
+                return (
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            min="1"
+                            max="1000"
+                            defaultValue={100 + targetIndex + 1}
+                            className="w-20"
+                            onBlur={(e) => {
+                                const value = parseInt(e.target.value, 10);
+                                if (value >= 1 && value <= 1000) {
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        //priority: value
+                                    });
+                                }
+                            }}
+                        />
+                    </div>
+                );
+            }
+        },
         {
             accessorKey: "path",
             header: t("matchPath"),
