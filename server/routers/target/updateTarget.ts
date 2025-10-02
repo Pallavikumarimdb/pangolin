@@ -29,7 +29,7 @@ const updateTargetBodySchema = z
         enabled: z.boolean().optional(),
         path: z.string().optional().nullable(),
         pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable(),
-        priority: z.number().int().min(1).max(1000).default(100)
+        priority: z.number().int().min(1).max(1000).optional(),
     })
     .strict()
     .refine((data) => Object.keys(data).length > 0, {

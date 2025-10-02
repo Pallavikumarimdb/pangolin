@@ -14,7 +14,8 @@ export const TargetSchema = z.object({
     enabled: z.boolean().optional().default(true),
     "internal-port": z.number().int().min(1).max(65535).optional(),
     path: z.string().optional(),
-    "path-match": z.enum(["exact", "prefix", "regex"]).optional().nullable()
+    "path-match": z.enum(["exact", "prefix", "regex"]).optional().nullable(),
+    priority: z.number().int().min(1).max(1000).optional().default(100)
 });
 export type TargetData = z.infer<typeof TargetSchema>;
 

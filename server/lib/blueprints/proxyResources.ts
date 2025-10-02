@@ -107,7 +107,8 @@ export async function updateProxyResources(
                     enabled: targetData.enabled,
                     internalPort: internalPortToCreate,
                     path: targetData.path,
-                    pathMatchType: targetData["path-match"]
+                    pathMatchType: targetData["path-match"],
+                    priority: targetData.priority
                 })
                 .returning();
 
@@ -327,7 +328,8 @@ export async function updateProxyResources(
                             port: targetData.port,
                             enabled: targetData.enabled,
                             path: targetData.path,
-                            pathMatchType: targetData["path-match"]
+                            pathMatchType: targetData["path-match"],
+                            priority: targetData.priority
                         })
                         .where(eq(targets.targetId, existingTarget.targetId))
                         .returning();

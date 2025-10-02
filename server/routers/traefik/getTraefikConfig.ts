@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { db, exitNodes } from "@server/db";
-import { and, eq, inArray, or, isNull, ne, isNotNull } from "drizzle-orm";
+import { and, eq, inArray, or, isNull, ne, isNotNull, desc } from "drizzle-orm";
 import logger from "@server/logger";
 import HttpCode from "@server/types/HttpCode";
 import config from "@server/lib/config";
@@ -133,7 +133,8 @@ export async function getTraefikConfig(
             internalPort: targets.internalPort,
             path: targets.path,
             pathMatchType: targets.pathMatchType,
-
+            priority: targets.priority,
+            
             // Site fields
             siteId: sites.siteId,
             siteType: sites.type,
@@ -154,7 +155,8 @@ export async function getTraefikConfig(
                     ? isNotNull(resources.http) // ignore the http check if allow_raw_resources is true
                     : eq(resources.http, true)
             )
-        );
+        )
+        .orderBy(desc(targets.priority), targets.targetId); // stable ordering
 
     // Group by resource and include targets with their unique site data
     const resourcesMap = new Map();
@@ -163,6 +165,7 @@ export async function getTraefikConfig(
         const resourceId = row.resourceId;
         const targetPath = sanitizePath(row.path) || ""; // Handle null/undefined paths
         const pathMatchType = row.pathMatchType || "";
+        const priority = row.priority ?? 100;
 
         // Create a unique key combining resourceId and path+pathMatchType
         const pathKey = [targetPath, pathMatchType].filter(Boolean).join("-");
@@ -186,7 +189,8 @@ export async function getTraefikConfig(
                 targets: [],
                 headers: row.headers,
                 path: row.path, // the targets will all have the same path
-                pathMatchType: row.pathMatchType // the targets will all have the same pathMatchType
+                pathMatchType: row.pathMatchType, // the targets will all have the same pathMatchType
+                priority: priority // may be null, we fallback later
             });
         }
 
@@ -199,6 +203,7 @@ export async function getTraefikConfig(
             port: row.port,
             internalPort: row.internalPort,
             enabled: row.targetEnabled,
+            priority: row.priority,
             site: {
                 siteId: row.siteId,
                 type: row.siteType,
@@ -348,9 +353,30 @@ export async function getTraefikConfig(
             }
 
             let rule = `Host(\`${fullDomain}\`)`;
-            let priority = 100;
+
+            // priority logic
+            let priority: number;
+            if (resource.priority && resource.priority != 100) {
+                priority = resource.priority;
+            } else {
+                priority = 100;
+                if (resource.path && resource.pathMatchType) {
+                    priority += 10;
+                    if (resource.pathMatchType === "exact") {
+                        priority += 5;
+                    } else if (resource.pathMatchType === "prefix") {
+                        priority += 3;
+                    } else if (resource.pathMatchType === "regex") {
+                        priority += 2;
+                    }
+                    if (resource.path === "/") {
+                        priority = 1; // lowest for catch-all
+                    }
+                }
+            }
+
             if (resource.path && resource.pathMatchType) {
-                priority += 1;
+                //priority += 1;
                 // add path to rule based on match type
                 let path = resource.path;
                 // if the path doesn't start with a /, add it
@@ -406,7 +432,7 @@ export async function getTraefikConfig(
 
                         return (
                             (targets as TargetWithSite[])
-                                .filter((target: TargetWithSite) => {
+                            .filter((target: TargetWithSite) => {
                                     if (!target.enabled) {
                                         return false;
                                     }
@@ -427,7 +453,7 @@ export async function getTraefikConfig(
                                         ) {
                                             return false;
                                         }
-                                    } else if (target.site.type === "newt") {
+                                } else if (target.site.type === "newt") {
                                         if (
                                             !target.internalPort ||
                                             !target.method ||
@@ -435,10 +461,10 @@ export async function getTraefikConfig(
                                         ) {
                                             return false;
                                         }
-                                    }
-                                    return true;
-                                })
-                                .map((target: TargetWithSite) => {
+                                }
+                                return true;
+                            })
+                            .map((target: TargetWithSite) => {
                                     if (
                                         target.site.type === "local" ||
                                         target.site.type === "wireguard"
@@ -446,14 +472,14 @@ export async function getTraefikConfig(
                                         return {
                                             url: `${target.method}://${target.ip}:${target.port}`
                                         };
-                                    } else if (target.site.type === "newt") {
+                                } else if (target.site.type === "newt") {
                                         const ip =
                                             target.site.subnet!.split("/")[0];
                                         return {
                                             url: `${target.method}://${ip}:${target.internalPort}`
                                         };
-                                    }
-                                })
+                                }
+                            })
                                 // filter out duplicates
                                 .filter(
                                     (v, i, a) =>

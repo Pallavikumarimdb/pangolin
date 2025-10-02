@@ -109,7 +109,8 @@ const addTargetSchema = z.object({
     port: z.coerce.number().int().positive(),
     siteId: z.number().int().positive(),
     path: z.string().optional().nullable(),
-    pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable()
+    pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable(),
+    priority: z.number().int().min(1).max(1000)
 }).refine(
     (data) => {
         // If path is provided, pathMatchType must be provided
@@ -263,7 +264,8 @@ export default function ReverseProxyTargets(props: {
             method: resource.http ? "http" : null,
             port: "" as any as number,
             path: null,
-            pathMatchType: null
+            pathMatchType: null,
+            priority: 100,
         }
     });
 
@@ -454,7 +456,8 @@ export default function ReverseProxyTargets(props: {
             method: resource.http ? "http" : null,
             port: "" as any as number,
             path: null,
-            pathMatchType: null
+            pathMatchType: null,
+            priority: 100,
         });
     }
 
@@ -499,7 +502,8 @@ export default function ReverseProxyTargets(props: {
                     enabled: target.enabled,
                     siteId: target.siteId,
                     path: target.path,
-                    pathMatchType: target.pathMatchType
+                    pathMatchType: target.pathMatchType,
+                    priority: target.priority
                 };
 
                 if (target.new) {
@@ -583,7 +587,7 @@ export default function ReverseProxyTargets(props: {
                                 <Info className="h-4 w-4 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                                <p>Higher priority routes are evaluated first. Use this to ensure specific paths like /api/v1 are checked before catch-all routes like /</p>
+                                <p>Higher priority routes are evaluated first. Priority = 100 means automatic ordering (system decides). Use another number to enforce manual priority.</p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
