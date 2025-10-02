@@ -444,7 +444,8 @@ export default function ReverseProxyTargets(props: {
             enabled: true,
             targetId: new Date().getTime(),
             new: true,
-            resourceId: resource.resourceId
+            resourceId: resource.resourceId,
+            priority: 100
         };
 
         setTargets([...targets, newTarget]);
@@ -589,21 +590,20 @@ export default function ReverseProxyTargets(props: {
                 </div>
             ),
             cell: ({ row }) => {
-                const targetIndex = targets.findIndex(t => t.targetId === row.original.targetId);
                 return (
                     <div className="flex items-center gap-2">
                         <Input
                             type="number"
                             min="1"
                             max="1000"
-                            defaultValue={100 + targetIndex + 1}
+                            defaultValue={row.original.priority || 100}
                             className="w-20"
                             onBlur={(e) => {
                                 const value = parseInt(e.target.value, 10);
                                 if (value >= 1 && value <= 1000) {
                                     updateTarget(row.original.targetId, {
                                         ...row.original,
-                                        //priority: value
+                                        priority: value
                                     });
                                 }
                             }}

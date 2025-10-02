@@ -32,7 +32,8 @@ const createTargetSchema = z
         port: z.number().int().min(1).max(65535),
         enabled: z.boolean().default(true),
         path: z.string().optional().nullable(),
-        pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable()
+        pathMatchType: z.enum(["exact", "prefix", "regex"]).optional().nullable(),
+        priority: z.number().int().min(1).max(1000).default(100)
     })
     .strict();
 

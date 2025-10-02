@@ -58,7 +58,7 @@ import {
 } from "@app/components/ui/popover";
 import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
 import { cn } from "@app/lib/cn";
-import { ArrowRight, MoveRight, SquareArrowOutUpRight } from "lucide-react";
+import { ArrowRight, Info, MoveRight, SquareArrowOutUpRight } from "lucide-react";
 import CopyTextBox from "@app/components/CopyTextBox";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -92,6 +92,7 @@ import { parseHostTarget } from "@app/lib/parseHostTarget";
 import { toASCII, toUnicode } from 'punycode';
 import { DomainRow } from "../../../../../components/DomainsTable";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
 
 
 const baseResourceFormSchema = z.object({
@@ -317,7 +318,8 @@ export default function Page() {
             enabled: true,
             targetId: new Date().getTime(),
             new: true,
-            resourceId: 0 // Will be set when resource is created
+            resourceId: 0, // Will be set when resource is created
+            priority: 100 // Default priority
         };
 
         setTargets([...targets, newTarget]);
@@ -545,6 +547,46 @@ export default function Page() {
     }, []);
 
     const columns: ColumnDef<LocalTarget>[] = [
+        {
+            id: "priority",
+            header: () => (
+                <div className="flex items-center gap-2">
+                    Priority
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Info className="h-4 w-4 text-muted-foreground" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                                <p>Higher priority routes are evaluated first. Use this to ensure specific paths like /api/v1 are checked before catch-all routes like /</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                </div>
+            ),
+            cell: ({ row }) => {
+                return (
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            min="1"
+                            max="1000"
+                            defaultValue={row.original.priority || 100}
+                            className="w-20"
+                            onBlur={(e) => {
+                                const value = parseInt(e.target.value, 10);
+                                if (value >= 1 && value <= 1000) {
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        priority: value
+                                    });
+                                }
+                            }}
+                        />
+                    </div>
+                );
+            }
+        },
         {
             accessorKey: "path",
             header: t("matchPath"),
