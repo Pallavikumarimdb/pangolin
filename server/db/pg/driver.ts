@@ -2,6 +2,7 @@ import { drizzle as DrizzlePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { readConfigFile } from "@server/lib/readConfigFile";
 import { withReplicas } from "drizzle-orm/pg-core";
+import * as schema from "./schema";
 
 function createDb() {
     const config = readConfigFile();
@@ -45,7 +46,7 @@ function createDb() {
     const replicas = [];
 
     if (!replicaConnections.length) {
-        replicas.push(DrizzlePostgres(primaryPool));
+        replicas.push(DrizzlePostgres(primaryPool, { schema }));
     } else {
         for (const conn of replicaConnections) {
             const replicaPool = new Pool({
@@ -54,11 +55,11 @@ function createDb() {
                 idleTimeoutMillis: 30000,
                 connectionTimeoutMillis: 5000,
             });
-            replicas.push(DrizzlePostgres(replicaPool));
+            replicas.push(DrizzlePostgres(replicaPool, { schema }));
         }
     }
 
-    return withReplicas(DrizzlePostgres(primaryPool), replicas as any);
+    return withReplicas(DrizzlePostgres(primaryPool, { schema }), replicas as any);
 }
 
 export const db = createDb();
