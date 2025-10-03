@@ -493,7 +493,7 @@ function allowed(res: Response, userData?: BasicUserData, headers?: Record<strin
         data: {
             valid: true,
             ...(userData && { userData }),
-            ...(headers && { headers })
+            ...(headers && { responseHeaders: headers })
         },
         success: true,
         error: false,
