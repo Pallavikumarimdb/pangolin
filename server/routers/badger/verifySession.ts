@@ -16,11 +16,13 @@ import {
 } from "@server/db/queries/verifySessionQueries";
 import {
     LoginPage,
+    db,
     Resource,
     ResourceAccessToken,
     ResourcePassword,
     ResourcePincode,
     ResourceRule,
+    roles,
     sessions,
     users
 } from "@server/db";
@@ -37,6 +39,7 @@ import { fromError } from "zod-validation-error";
 import { getCountryCodeForIp, remoteGetCountryCodeForIp } from "@server/lib/geoip";
 import { getOrgTierData } from "@server/routers/private/billing";
 import { TierId } from "@server/lib/private/billing/tiers";
+import { eq } from "drizzle-orm";
 
 // We'll see if this speeds anything up
 const cache = new NodeCache({
@@ -64,12 +67,14 @@ type BasicUserData = {
     username: string;
     email: string | null;
     name: string | null;
+    role: string | null;
 };
 
 export type VerifyUserResponse = {
     valid: boolean;
     redirectUrl?: string;
     userData?: BasicUserData;
+    headers?: Record<string, string>;
 };
 
 export async function verifyResourceSession(
@@ -103,23 +108,23 @@ export async function verifyResourceSession(
 
         const clientIp = requestIp
             ? (() => {
-                  logger.debug("Request IP:", { requestIp });
-                  if (requestIp.startsWith("[") && requestIp.includes("]")) {
-                      // if brackets are found, extract the IPv6 address from between the brackets
-                      const ipv6Match = requestIp.match(/\[(.*?)\]/);
-                      if (ipv6Match) {
-                          return ipv6Match[1];
-                      }
-                  }
+                logger.debug("Request IP:", { requestIp });
+                if (requestIp.startsWith("[") && requestIp.includes("]")) {
+                    // if brackets are found, extract the IPv6 address from between the brackets
+                    const ipv6Match = requestIp.match(/\[(.*?)\]/);
+                    if (ipv6Match) {
+                        return ipv6Match[1];
+                    }
+                }
 
-                  // ivp4
-                  // split at last colon
-                  const lastColonIndex = requestIp.lastIndexOf(":");
-                  if (lastColonIndex !== -1) {
-                      return requestIp.substring(0, lastColonIndex);
-                  }
-                  return requestIp;
-              })()
+                // ivp4
+                // split at last colon
+                const lastColonIndex = requestIp.lastIndexOf(":");
+                if (lastColonIndex !== -1) {
+                    return requestIp.substring(0, lastColonIndex);
+                }
+                return requestIp;
+            })()
             : undefined;
 
         logger.debug("Client IP:", { clientIp });
@@ -134,10 +139,10 @@ export async function verifyResourceSession(
         const resourceCacheKey = `resource:${cleanHost}`;
         let resourceData:
             | {
-                  resource: Resource | null;
-                  pincode: ResourcePincode | null;
-                  password: ResourcePassword | null;
-              }
+                resource: Resource | null;
+                pincode: ResourcePincode | null;
+                password: ResourcePassword | null;
+            }
             | undefined = cache.get(resourceCacheKey);
 
         if (!resourceData) {
@@ -176,7 +181,8 @@ export async function verifyResourceSession(
 
             if (action == "ACCEPT") {
                 logger.debug("Resource allowed by rule");
-                return allowed(res);
+                const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                return allowed(res, undefined, interpolatedHeaders);
             } else if (action == "DROP") {
                 logger.debug("Resource denied by rule");
                 return notAllowed(res);
@@ -197,7 +203,8 @@ export async function verifyResourceSession(
             !resource.emailWhitelistEnabled
         ) {
             logger.debug("Resource allowed because no auth");
-            return allowed(res);
+            const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+            return allowed(res, undefined, interpolatedHeaders);
         }
 
         const redirectPath = `/auth/resource/${encodeURIComponent(
@@ -208,21 +215,21 @@ export async function verifyResourceSession(
         if (
             headers &&
             headers[
-                config.getRawConfig().server.resource_access_token_headers.id
+            config.getRawConfig().server.resource_access_token_headers.id
             ] &&
             headers[
-                config.getRawConfig().server.resource_access_token_headers.token
+            config.getRawConfig().server.resource_access_token_headers.token
             ]
         ) {
             const accessTokenId =
                 headers[
-                    config.getRawConfig().server.resource_access_token_headers
-                        .id
+                config.getRawConfig().server.resource_access_token_headers
+                    .id
                 ];
             const accessToken =
                 headers[
-                    config.getRawConfig().server.resource_access_token_headers
-                        .token
+                config.getRawConfig().server.resource_access_token_headers
+                    .token
                 ];
 
             const { valid, error, tokenItem } = await verifyResourceAccessToken(
@@ -248,7 +255,8 @@ export async function verifyResourceSession(
             }
 
             if (valid && tokenItem) {
-                return allowed(res);
+                const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                return allowed(res, undefined, interpolatedHeaders);
             }
         }
 
@@ -284,7 +292,8 @@ export async function verifyResourceSession(
             }
 
             if (valid && tokenItem) {
-                return allowed(res);
+                const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                return allowed(res, undefined, interpolatedHeaders);
             }
         }
 
@@ -318,6 +327,7 @@ export async function verifyResourceSession(
                 cache.set(sessionCacheKey, resourceSession);
             }
 
+
             if (resourceSession?.isRequestToken) {
                 logger.debug(
                     "Resource not allowed because session is a temporary request token"
@@ -334,17 +344,17 @@ export async function verifyResourceSession(
 
             if (resourceSession) {
                 if (pincode && resourceSession.pincodeId) {
-                    logger.debug(
-                        "Resource allowed because pincode session is valid"
-                    );
-                    return allowed(res);
+                    logger.debug("Resource allowed because pincode session is valid");
+                    const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                    return allowed(res, undefined, interpolatedHeaders);
                 }
 
                 if (password && resourceSession.passwordId) {
                     logger.debug(
                         "Resource allowed because password session is valid"
                     );
-                    return allowed(res);
+                    const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                    return allowed(res, undefined, interpolatedHeaders);
                 }
 
                 if (
@@ -354,20 +364,22 @@ export async function verifyResourceSession(
                     logger.debug(
                         "Resource allowed because whitelist session is valid"
                     );
-                    return allowed(res);
+                    const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                    return allowed(res, undefined, interpolatedHeaders);
                 }
 
                 if (resourceSession.accessTokenId) {
                     logger.debug(
                         "Resource allowed because access token session is valid"
                     );
-                    return allowed(res);
+                    const interpolatedHeaders = interpolateHeaders(resource.headers, undefined);
+                    return allowed(res, undefined, interpolatedHeaders);
                 }
 
                 if (resourceSession.userSessionId && sso) {
                     const userAccessCacheKey = `userAccess:${
                         resourceSession.userSessionId
-                    }:${resource.resourceId}`;
+                        }:${resource.resourceId}`;
 
                     let allowedUserData: BasicUserData | null | undefined =
                         cache.get(userAccessCacheKey);
@@ -388,7 +400,8 @@ export async function verifyResourceSession(
                         logger.debug(
                             "Resource allowed because user session is valid"
                         );
-                        return allowed(res, allowedUserData);
+                        const interpolatedHeaders = interpolateHeaders(resource.headers, allowedUserData);
+                        return allowed(res, allowedUserData, interpolatedHeaders);
                     }
                 }
             }
@@ -424,7 +437,7 @@ function extractResourceSessionToken(
 ) {
     const prefix = `${config.getRawConfig().server.session_cookie_name}${
         ssl ? "_s" : ""
-    }`;
+        }`;
 
     const all: { cookieName: string; token: string; priority: number }[] = [];
 
@@ -500,12 +513,13 @@ async function notAllowed(res: Response, redirectPath?: string, orgId?: string) 
     return response<VerifyUserResponse>(res, data);
 }
 
-function allowed(res: Response, userData?: BasicUserData) {
+function allowed(res: Response, userData?: BasicUserData, headers?: Record<string, string>) {
     const data = {
-        data:
-            userData !== undefined && userData !== null
-                ? { valid: true, ...userData }
-                : { valid: true },
+        data: {
+            valid: true,
+            ...(userData && { userData }),
+            ...(headers && { headers })
+        },
         success: true,
         error: false,
         message: "Access allowed",
@@ -582,10 +596,14 @@ async function isUserAllowedToAccessResource(
     );
 
     if (roleResourceAccess) {
+        const role = await db.query.roles.findFirst({
+            where: eq(roles.roleId, userOrgRole.roleId)
+        });
         return {
             username: user.username,
             email: user.email,
-            name: user.name
+            name: user.name,
+            role: role?.name || null
         };
     }
 
@@ -595,10 +613,14 @@ async function isUserAllowedToAccessResource(
     );
 
     if (userResourceAccess) {
+        const role = await db.query.roles.findFirst({
+            where: eq(roles.roleId, userOrgRole.roleId)
+        });
         return {
             username: user.username,
             email: user.email,
-            name: user.name
+            name: user.name,
+            role: role?.name || null
         };
     }
 
@@ -799,4 +821,70 @@ async function isIpInGeoIP(ip: string, countryCode: string): Promise<boolean> {
     logger.debug(`IP ${ip} is in country: ${cachedCountryCode}`);
 
     return cachedCountryCode?.toUpperCase() === countryCode.toUpperCase();
+}
+function interpolateHeaders(
+    headerTemplate: string | null,
+    userData?: BasicUserData
+): Record<string, string> | undefined {
+    if (!headerTemplate) return undefined;
+
+    let parsedHeaders: any;
+    try {
+        parsedHeaders = JSON.parse(headerTemplate);
+    } catch (e) {
+        logger.error("Failed to parse headers template:", e);
+        return undefined;
+    }
+
+    const interpolated: Record<string, string> = {};
+
+    // Sanitize function to prevent header injection
+    const sanitize = (value: string | null): string => {
+        if (!value) return '';
+        // Remove newlines and carriage returns to prevent header injection
+        return value.replace(/[\r\n]/g, '');
+    };
+
+    // Check if it's an array format (from UI) or object format
+    const headersArray = Array.isArray(parsedHeaders) 
+        ? parsedHeaders 
+        : Object.values(parsedHeaders).filter(h => h && typeof h === 'object' && 'name' in h);
+
+    if (headersArray.length > 0) {
+        // Array format: [{"name": "x-header", "value": "{{username}}"}]
+        for (const header of headersArray) {
+            if (!header.name || !header.value) continue;
+            
+            let interpolatedValue = header.value;
+
+            if (userData) {
+                interpolatedValue = interpolatedValue
+                    .replace(/\{\{username\}\}/g, sanitize(userData.username))
+                    .replace(/\{\{email\}\}/g, sanitize(userData.email))
+                    .replace(/\{\{name\}\}/g, sanitize(userData.name))
+                    .replace(/\{\{role\}\}/g, sanitize(userData.role));
+            }
+
+            interpolated[header.name] = interpolatedValue;
+        }
+    } else {
+        // Simple object format: {"X-Header": "{{username}}"}
+        for (const [key, value] of Object.entries(parsedHeaders)) {
+            if (typeof value !== 'string') continue;
+            
+            let interpolatedValue = value;
+
+            if (userData) {
+                interpolatedValue = interpolatedValue
+                    .replace(/\{\{username\}\}/g, sanitize(userData.username))
+                    .replace(/\{\{email\}\}/g, sanitize(userData.email))
+                    .replace(/\{\{name\}\}/g, sanitize(userData.name))
+                    .replace(/\{\{role\}\}/g, sanitize(userData.role));
+            }
+
+            interpolated[key] = interpolatedValue;
+        }
+    }
+
+    return Object.keys(interpolated).length > 0 ? interpolated : undefined;
 }
