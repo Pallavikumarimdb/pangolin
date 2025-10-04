@@ -773,18 +773,16 @@ export default function ResourcesTable({
                             </div>
                             <div className="flex items-center gap-2 sm:justify-end">
                                 <div>
-                                    {refreshData && (
-                                        <Button
-                                            variant="outline"
-                                            onClick={refreshData}
-                                            disabled={isRefreshing}
-                                        >
-                                            <RefreshCw
-                                                className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                                            />
-                                            {t("refresh")}
-                                        </Button>
-                                    )}
+                                    <Button
+                                        variant="outline"
+                                        onClick={refreshData}
+                                        disabled={isRefreshing}
+                                    >
+                                        <RefreshCw
+                                            className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
+                                        />
+                                        {t("refresh")}
+                                    </Button>
                                 </div>
                                 <div>
                                     {getActionButton()}
