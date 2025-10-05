@@ -918,7 +918,7 @@ export default function ReverseProxyTargets(props: {
                             trigger={
                                 <Button
                                     variant="outline"
-                                    className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer"
+                                    className="flex items-center gap-2 max-w-md text-left cursor-pointer"
                                 >
                                     <TargetDisplay
                                         value={{

@@ -94,6 +94,8 @@ import { DomainRow } from "../../../../../components/DomainsTable";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
 import { PathMatchDisplay, PathMatchModal, PathRewriteDisplay, PathRewriteModal } from "@app/components/PathMatchRenameModal";
+import { TargetModal } from "@app/components/TargetModal";
+import { TargetDisplay } from "@app/components/TargetDisplay";
 
 
 const baseResourceFormSchema = z.object({
@@ -810,87 +812,84 @@ export default function Page() {
                 );
             }
         },
-        ...(baseForm.watch("http")
-            ? [
-                {
-                    accessorKey: "method",
-                    header: t("method"),
-                    cell: ({ row }: { row: Row<LocalTarget> }) => (
-                        <Select
-                            defaultValue={row.original.method ?? ""}
-                            onValueChange={(value) =>
+        {
+            accessorKey: "target",
+            header: t("target"),
+            cell: ({ row }) => {
+                const hasTarget = !!(row.original.ip || row.original.port || row.original.method);
+
+                return hasTarget ? (
+                    <div className="flex items-center gap-1">
+                        <TargetModal
+                            value={{
+                                method: row.original.method,
+                                ip: row.original.ip,
+                                port: row.original.port
+                            }}
+                            onChange={(config) =>
                                 updateTarget(row.original.targetId, {
                                     ...row.original,
-                                    method: value
+                                    ...config
                                 })
                             }
-                        >
-                            <SelectTrigger>
-                                {row.original.method}
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="http">http</SelectItem>
-                                <SelectItem value="https">https</SelectItem>
-                                <SelectItem value="h2c">h2c</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    )
-                }
-            ]
-            : []),
-        {
-            accessorKey: "ip",
-            header: t("targetAddr"),
-            cell: ({ row }) => (
-                <Input
-                    defaultValue={row.original.ip}
-                    className="min-w-[150px]"
-                    onBlur={(e) => {
-                        const input = e.target.value.trim();
-                        const hasProtocol = /^(https?|h2c):\/\//.test(input);
-                        const hasPort = /:\d+(?:\/|$)/.test(input);
-
-                        if (hasProtocol || hasPort) {
-                            const parsed = parseHostTarget(input);
-                            if (parsed) {
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    method: hasProtocol ? parsed.protocol : row.original.method,
-                                    ip: parsed.host,
-                                    port: hasPort ? parsed.port : row.original.port
-                                });
-                            } else {
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    ip: input
-                                });
+                            showMethod={baseForm.watch("http")}
+                            trigger={
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center gap-2 max-w-md text-left cursor-pointer"
+                                >
+                                    <TargetDisplay
+                                        value={{
+                                            method: row.original.method,
+                                            ip: row.original.ip,
+                                            port: row.original.port
+                                        }}
+                                        showMethod={baseForm.watch("http")}
+                                    />
+                                </Button>
                             }
-                        } else {
+                        />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                updateTarget(row.original.targetId, {
+                                    ...row.original,
+                                    method: null,
+                                    ip: "",
+                                    port: undefined
+                                });
+                            }}
+                        >
+                            ×
+                        </Button>
+                        <MoveRight className="mr-2 h-4 w-4" />
+                    </div>
+                ) : (
+                    <TargetModal
+                        value={{
+                            method: row.original.method,
+                            ip: row.original.ip,
+                            port: row.original.port
+                        }}
+                        onChange={(config) =>
                             updateTarget(row.original.targetId, {
                                 ...row.original,
-                                ip: input
-                            });
+                                ...config
+                            })
                         }
-                    }}
-                />
-            )
-        },
-        {
-            accessorKey: "port",
-            header: t("targetPort"),
-            cell: ({ row }) => (
-                <Input
-                    type="number"
-                    defaultValue={row.original.port}
-                    className="min-w-[100px]"
-                    onBlur={(e) =>
-                        updateTarget(row.original.targetId, {
-                            ...row.original,
-                            port: parseInt(e.target.value, 10)
-                        })
-                    }
-                />
-            )
+                        showMethod={baseForm.watch("http")}
+                        trigger={
+                            <Button variant="outline">
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("configureTarget")}
+                            </Button>
+                        }
+                    />
+                );
+            }
         },
         {
             accessorKey: "rewritePath",
