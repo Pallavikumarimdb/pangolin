@@ -46,6 +46,24 @@ export default function OrgApiKeysTable({
     const api = createApiClient(useEnvContext());
 
     const t = useTranslations();
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
+    const refreshData = async () => {
+        console.log("Data refreshed");
+        setIsRefreshing(true);
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 200));
+            router.refresh();
+        } catch (error) {
+            toast({
+                title: t("error"),
+                description: t("refreshError"),
+                variant: "destructive"
+            });
+        } finally {
+            setIsRefreshing(false);
+        }
+    };
 
     const deleteSite = (apiKeyId: string) => {
         api.delete(`/org/${orgId}/api-key/${apiKeyId}`)
@@ -195,6 +213,8 @@ export default function OrgApiKeysTable({
                 addApiKey={() => {
                     router.push(`/${orgId}/settings/api-keys/create`);
                 }}
+                onRefresh={refreshData}
+                isRefreshing={isRefreshing}
             />
         </>
     );
