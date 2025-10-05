@@ -469,6 +469,8 @@
     "proxyErrorInvalidHeader": "Invalid custom Host Header value. Use domain name format, or save empty to unset custom Host Header.",
     "proxyErrorTls": "Invalid TLS Server Name. Use domain name format, or save empty to remove the TLS Server Name.",
     "proxyEnableSSL": "Enable SSL (https)",
+    "target": "Target",
+    "configureTargets": "Configure Targets",
     "targetErrorFetch": "Failed to fetch targets",
     "targetErrorFetchDescription": "An error occurred while fetching targets",
     "siteErrorFetch": "Failed to fetch resource",

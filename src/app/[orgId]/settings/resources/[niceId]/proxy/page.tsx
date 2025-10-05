@@ -110,6 +110,8 @@ import {
 } from "@app/components/PathMatchRenameModal";
 import { Badge } from "@app/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
+import { TargetModal } from "@app/components/TargetModal";
+import { TargetDisplay } from "@app/components/TargetDisplay";
 
 const addTargetSchema = z
     .object({
@@ -537,11 +539,11 @@ export default function ReverseProxyTargets(props: {
             targets.map((target) =>
                 target.targetId === targetId
                     ? {
-                          ...target,
-                          ...data,
-                          updated: true,
-                          siteType: site?.type || null
-                      }
+                        ...target,
+                        ...data,
+                        updated: true,
+                        siteType: site?.type || null
+                    }
                     : target
             )
         );
@@ -552,10 +554,10 @@ export default function ReverseProxyTargets(props: {
             targets.map((target) =>
                 target.targetId === targetId
                     ? {
-                          ...target,
-                          ...config,
-                          updated: true
-                      }
+                        ...target,
+                        ...config,
+                        updated: true
+                    }
                     : target
             )
         );
@@ -743,9 +745,9 @@ export default function ReverseProxyTargets(props: {
                             }
                         />
                         <Button
-                            variant="text"
+                           variant="ghost"
                             size="sm"
-                            className="px-1"
+                            className="h-8 w-8 p-0"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 updateTarget(row.original.targetId, {
@@ -760,7 +762,7 @@ export default function ReverseProxyTargets(props: {
                             ×
                         </Button>
 
-                        {/* <MoveRight className="ml-1 h-4 w-4" /> */}
+                        <MoveRight className="ml-1 h-4 w-4" />
                     </div>
                 ) : (
                     <PathMatchModal
@@ -806,7 +808,7 @@ export default function ReverseProxyTargets(props: {
                 };
 
                 return (
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-1 items-center">
                         <Popover>
                             <PopoverTrigger asChild>
                                 <Button
@@ -815,7 +817,7 @@ export default function ReverseProxyTargets(props: {
                                     className={cn(
                                         "justify-between flex-1",
                                         !row.original.siteId &&
-                                            "text-muted-foreground"
+                                        "text-muted-foreground"
                                     )}
                                 >
                                     {row.original.siteId
@@ -892,91 +894,84 @@ export default function ReverseProxyTargets(props: {
                 );
             }
         },
-        ...(resource.http
-            ? [
-                  {
-                      accessorKey: "method",
-                      header: t("method"),
-                      cell: ({ row }: { row: Row<LocalTarget> }) => (
-                          <Select
-                              defaultValue={row.original.method ?? ""}
-                              onValueChange={(value) =>
-                                  updateTarget(row.original.targetId, {
-                                      ...row.original,
-                                      method: value
-                                  })
-                              }
-                          >
-                              <SelectTrigger>
-                                  {row.original.method}
-                              </SelectTrigger>
-                              <SelectContent>
-                                  <SelectItem value="http">http</SelectItem>
-                                  <SelectItem value="https">https</SelectItem>
-                                  <SelectItem value="h2c">h2c</SelectItem>
-                              </SelectContent>
-                          </Select>
-                      )
-                  }
-              ]
-            : []),
         {
-            accessorKey: "ip",
-            header: t("targetAddr"),
-            cell: ({ row }) => (
-                <Input
-                    defaultValue={row.original.ip}
-                    className="min-w-[150px]"
-                    onBlur={(e) => {
-                        const input = e.target.value.trim();
-                        const hasProtocol = /^(https?|h2c):\/\//.test(input);
-                        const hasPort = /:\d+(?:\/|$)/.test(input);
+            accessorKey: "target",
+            header: t("target"),
+            cell: ({ row }) => {
+                const hasTarget = !!(row.original.ip || row.original.port || row.original.method);
 
-                        if (hasProtocol || hasPort) {
-                            const parsed = parseHostTarget(input);
-                            if (parsed) {
+                return hasTarget ? (
+                    <div className="flex items-center gap-1">
+                        <TargetModal
+                            value={{
+                                method: row.original.method,
+                                ip: row.original.ip,
+                                port: row.original.port
+                            }}
+                            onChange={(config) =>
                                 updateTarget(row.original.targetId, {
                                     ...row.original,
-                                    method: hasProtocol
-                                        ? parsed.protocol
-                                        : row.original.method,
-                                    ip: parsed.host,
-                                    port: hasPort
-                                        ? parsed.port
-                                        : row.original.port
-                                });
-                            } else {
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    ip: input
-                                });
+                                    ...config
+                                })
                             }
-                        } else {
+                            showMethod={resource.http}
+                            trigger={
+                                <Button
+                                    variant="outline"
+                                    className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer"
+                                >
+                                    <TargetDisplay
+                                        value={{
+                                            method: row.original.method,
+                                            ip: row.original.ip,
+                                            port: row.original.port
+                                        }}
+                                        showMethod={resource.http}
+                                    />
+                                </Button>
+                            }
+                        />
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                updateTarget(row.original.targetId, {
+                                    ...row.original,
+                                    method: null,
+                                    ip: "",
+                                    port: undefined
+                                });
+                            }}
+                        >
+                            ×
+                        </Button>
+                        <MoveRight className="mr-2 h-4 w-4" />
+                    </div>
+                ) : (
+                    <TargetModal
+                        value={{
+                            method: row.original.method,
+                            ip: row.original.ip,
+                            port: row.original.port
+                        }}
+                        onChange={(config) =>
                             updateTarget(row.original.targetId, {
                                 ...row.original,
-                                ip: input
-                            });
+                                ...config
+                            })
                         }
-                    }}
-                />
-            )
-        },
-        {
-            accessorKey: "port",
-            header: t("targetPort"),
-            cell: ({ row }) => (
-                <Input
-                    type="number"
-                    defaultValue={row.original.port}
-                    className="min-w-[100px]"
-                    onBlur={(e) =>
-                        updateTarget(row.original.targetId, {
-                            ...row.original,
-                            port: parseInt(e.target.value, 10)
-                        })
-                    }
-                />
-            )
+                        showMethod={resource.http}
+                        trigger={
+                            <Button variant="outline">
+                                <Plus className="h-4 w-4 mr-2" />
+                                {t("configureTarget")}
+                            </Button>
+                        }
+                    />
+                );
+            }
         },
         {
             accessorKey: "rewritePath",
@@ -990,7 +985,6 @@ export default function ReverseProxyTargets(props: {
 
                 return hasRewritePath && !noPathMatch ? (
                     <div className="flex items-center gap-1">
-                        {/* <MoveRight className="mr-2 h-4 w-4" /> */}
                         <PathRewriteModal
                             value={{
                                 rewritePath: row.original.rewritePath,
@@ -1017,9 +1011,9 @@ export default function ReverseProxyTargets(props: {
                             }
                         />
                         <Button
+                            variant="ghost"
                             size="sm"
-                            variant="text"
-                            className="px-1"
+                            className="h-8 w-8 p-0"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 updateTarget(row.original.targetId, {
@@ -1238,21 +1232,21 @@ export default function ReverseProxyTargets(props: {
                                                                     className={cn(
                                                                         "justify-between flex-1",
                                                                         !field.value &&
-                                                                            "text-muted-foreground"
+                                                                        "text-muted-foreground"
                                                                     )}
                                                                 >
                                                                     {field.value
                                                                         ? sites.find(
-                                                                              (
-                                                                                  site
-                                                                              ) =>
-                                                                                  site.siteId ===
-                                                                                  field.value
-                                                                          )
-                                                                              ?.name
+                                                                            (
+                                                                                site
+                                                                            ) =>
+                                                                                site.siteId ===
+                                                                                field.value
+                                                                        )
+                                                                            ?.name
                                                                         : t(
-                                                                              "siteSelect"
-                                                                          )}
+                                                                            "siteSelect"
+                                                                        )}
                                                                     <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
@@ -1318,34 +1312,34 @@ export default function ReverseProxyTargets(props: {
                                                                 );
                                                             return selectedSite &&
                                                                 selectedSite.type ===
-                                                                    "newt"
+                                                                "newt"
                                                                 ? (() => {
-                                                                      const dockerState =
-                                                                          getDockerStateForSite(
-                                                                              selectedSite.siteId
-                                                                          );
-                                                                      return (
-                                                                          <ContainersSelector
-                                                                              site={
-                                                                                  selectedSite
-                                                                              }
-                                                                              containers={
-                                                                                  dockerState.containers
-                                                                              }
-                                                                              isAvailable={
-                                                                                  dockerState.isAvailable
-                                                                              }
-                                                                              onContainerSelect={
-                                                                                  handleContainerSelect
-                                                                              }
-                                                                              onRefresh={() =>
-                                                                                  refreshContainersForSite(
-                                                                                      selectedSite.siteId
-                                                                                  )
-                                                                              }
-                                                                          />
-                                                                      );
-                                                                  })()
+                                                                    const dockerState =
+                                                                        getDockerStateForSite(
+                                                                            selectedSite.siteId
+                                                                        );
+                                                                    return (
+                                                                        <ContainersSelector
+                                                                            site={
+                                                                                selectedSite
+                                                                            }
+                                                                            containers={
+                                                                                dockerState.containers
+                                                                            }
+                                                                            isAvailable={
+                                                                                dockerState.isAvailable
+                                                                            }
+                                                                            onContainerSelect={
+                                                                                handleContainerSelect
+                                                                            }
+                                                                            onRefresh={() =>
+                                                                                refreshContainersForSite(
+                                                                                    selectedSite.siteId
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    );
+                                                                })()
                                                                 : null;
                                                         })()}
                                                 </div>
@@ -1558,7 +1552,7 @@ export default function ReverseProxyTargets(props: {
                                     </form>
                                 </Form>
                             </SettingsSectionForm>
-                            <div className="">
+                            <div className="overflow-x-auto">
                                 <Table>
                                     <TableHeader>
                                         {table
@@ -1573,12 +1567,12 @@ export default function ReverseProxyTargets(props: {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                          header
-                                                                              .column
-                                                                              .columnDef
-                                                                              .header,
-                                                                          header.getContext()
-                                                                      )}
+                                                                        header
+                                                                            .column
+                                                                            .columnDef
+                                                                            .header,
+                                                                        header.getContext()
+                                                                    )}
                                                             </TableHead>
                                                         )
                                                     )}
