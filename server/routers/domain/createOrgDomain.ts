@@ -24,9 +24,12 @@ const paramsSchema = z
 const bodySchema = z
     .object({
         type: z.enum(["ns", "cname", "wildcard"]),
-        baseDomain: subdomainSchema
+        baseDomain: subdomainSchema,
+        certResolver: z.enum(["letsencrypt", "custom"]).optional(), // optional, only for wildcard
+        customCertResolver: z.string().optional() // required if certResolver === "custom"
     })
     .strict();
+
 
 export type CreateDomainResponse = {
     domainId: string;
@@ -34,6 +37,8 @@ export type CreateDomainResponse = {
     cnameRecords?: { baseDomain: string; value: string }[];
     aRecords?: { baseDomain: string; value: string }[];
     txtRecords?: { baseDomain: string; value: string }[];
+    certResolver?: string | null;
+    customCertResolver?: string | null;
 };
 
 // Helper to check if a domain is a subdomain or equal to another domain
@@ -71,7 +76,7 @@ export async function createOrgDomain(
         }
 
         const { orgId } = parsedParams.data;
-        const { type, baseDomain } = parsedBody.data;
+        const { type, baseDomain, certResolver, customCertResolver } = parsedBody.data;
 
         if (build == "oss") {
             if (type !== "wildcard") {
@@ -104,7 +109,7 @@ export async function createOrgDomain(
             // many providers dont allow cname for this. Lets prevent it for the user for now
             return next(
                 createHttpError(
-                    HttpCode.BAD_REQUEST, 
+                    HttpCode.BAD_REQUEST,
                     "You cannot create a CNAME record on a root domain. RFC 1912 § 2.4 prohibits CNAME records at the zone apex. Please use a subdomain."
                 )
             );
@@ -253,7 +258,9 @@ export async function createOrgDomain(
                     domainId,
                     baseDomain,
                     type,
-                    verified: build == "oss" ? true : false
+                    verified: build == "oss" ? true : false,
+                    certResolver: certResolver || null,
+                    customCertResolver: customCertResolver || null
                 })
                 .returning();
 
@@ -324,7 +331,9 @@ export async function createOrgDomain(
                 cnameRecords,
                 txtRecords,
                 nsRecords,
-                aRecords
+                aRecords,
+                certResolver: returned.certResolver,
+                customCertResolver: returned.customCertResolver
             },
             success: true,
             error: false,

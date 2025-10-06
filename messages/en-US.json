@@ -1740,5 +1740,9 @@
     "resourceHeaderAuthSetupTitle": "Set Header Authentication",
     "resourceHeaderAuthSetupTitleDescription": "Set the basic auth credentials (username and password) to protect this resource with HTTP Header Authentication. Leave both fields blank to remove existing header authentication.",
     "resourceHeaderAuthSubmit": "Set Header Authentication",
-    "actionSetResourceHeaderAuth": "Set Header Authentication"
+    "actionSetResourceHeaderAuth": "Set Header Authentication",
+    "certResolver": "Certificate Resolver",
+    "certResolverDescription": "Select the certificate resolver to use for this resource.",
+    "selectCertResolver": "Select Certificate Resolver",
+    "enterCustomResolver": "Enter Custom Resolver"
 }
