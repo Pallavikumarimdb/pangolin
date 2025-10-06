@@ -12,7 +12,7 @@ export const domains = sqliteTable("domains", {
     verified: integer("verified", { mode: "boolean" }).notNull().default(false),
     failed: integer("failed", { mode: "boolean" }).notNull().default(false),
     tries: integer("tries").notNull().default(0),
-    certResolver: text("certResolver").default("letsencrypt"),
+    certResolver: text("certResolver"),
     customCertResolver: text("customCertResolver")
 });
 

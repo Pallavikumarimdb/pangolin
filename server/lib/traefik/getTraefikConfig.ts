@@ -1,4 +1,4 @@
-import { db, targetHealthCheck } from "@server/db";
+import { db, targetHealthCheck, domains } from "@server/db";
 import {
     and,
     eq,
@@ -75,11 +75,15 @@ export async function getTraefikConfig(
             siteType: sites.type,
             siteOnline: sites.online,
             subnet: sites.subnet,
-            exitNodeId: sites.exitNodeId
+            exitNodeId: sites.exitNodeId,
+            // Domain cert resolver fields
+            domainCertResolver: domains.certResolver,
+            domainCustomCertResolver: domains.customCertResolver
         })
         .from(sites)
         .innerJoin(targets, eq(targets.siteId, sites.siteId))
         .innerJoin(resources, eq(resources.resourceId, targets.resourceId))
+        .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .leftJoin(
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
@@ -167,7 +171,10 @@ export async function getTraefikConfig(
                 pathMatchType: row.pathMatchType, // the targets will all have the same pathMatchType
                 rewritePath: row.rewritePath,
                 rewritePathType: row.rewritePathType,
-                priority: priority // may be null, we fallback later
+                priority: priority,
+                // Store domain cert resolver fields
+                domainCertResolver: row.domainCertResolver,
+                domainCustomCertResolver: row.domainCustomCertResolver
             });
         }
 
@@ -248,18 +255,73 @@ export async function getTraefikConfig(
 
             const configDomain = config.getDomain(resource.domainId);
 
-            let certResolver: string, preferWildcardCert: boolean;
-            if (!configDomain) {
-                certResolver = config.getRawConfig().traefik.cert_resolver;
-                preferWildcardCert =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
+            let certResolverFromConfig: string | undefined;
+            let preferWildcardCert = false;
+
+            const rawTraefikCfg = config.getRawConfig().traefik || {};
+            const globalDefaultResolver: string | undefined = rawTraefikCfg.cert_resolver;
+            const availableResolvers = rawTraefikCfg.custom_cert_resolver
+                ? Object.keys(rawTraefikCfg.custom_cert_resolver)
+                : [];
+
+            // Priority 1: Read from YAML config (if exists)
+            if (configDomain) {
+                certResolverFromConfig =
+                    configDomain.cert_resolver ??
+                    configDomain.custom_cert_resolver;
+                preferWildcardCert = !!(configDomain.prefer_wildcard_cert);
+            }
+
+            // Priority 2: Override with database domain settings (if exists)
+            let finalCertResolver: string | undefined;
+            let finalCustomCertResolver: string | undefined;
+
+            if (resource.domainCertResolver) {
+                finalCertResolver = resource.domainCertResolver;
+                if (resource.domainCertResolver === "custom" && resource.domainCustomCertResolver) {
+                    finalCustomCertResolver = resource.domainCustomCertResolver;
+                }
             } else {
-                certResolver = configDomain.cert_resolver;
-                preferWildcardCert = configDomain.prefer_wildcard_cert;
+                // Fall back to config
+                finalCertResolver = certResolverFromConfig;
+            }
+
+            // Resolve the final resolver name
+            let resolverName: string | undefined;
+
+            if (finalCertResolver) {
+                if (finalCertResolver === "custom") {
+                    // Check database custom resolver first, then config
+                    const customResolver = finalCustomCertResolver || configDomain?.custom_cert_resolver;
+
+                    if (customResolver && typeof customResolver === "string" && customResolver.trim()) {
+                        resolverName = customResolver.trim();
+                    } else {
+                        resolverName = globalDefaultResolver;
+                        logger.warn(
+                            `Domain ${resource.domainId} requested custom cert resolver but none set; falling back to global resolver ${resolverName}`
+                        );
+                    }
+                } else {
+                    // Validate against available resolvers
+                    if (
+                        availableResolvers.length === 0 ||
+                        availableResolvers.includes(finalCertResolver)
+                    ) {
+                        resolverName = finalCertResolver;
+                    } else {
+                        logger.warn(
+                            `Unknown cert resolver "${finalCertResolver}" for domain ${resource.domainId}; falling back to global resolver.`
+                        );
+                        resolverName = globalDefaultResolver;
+                    }
+                }
+            } else {
+                resolverName = globalDefaultResolver;
             }
 
             const tls = {
-                certResolver: certResolver,
+                certResolver: resolverName,
                 ...(preferWildcardCert
                     ? {
                           domains: [

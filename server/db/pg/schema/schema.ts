@@ -19,7 +19,7 @@ export const domains = pgTable("domains", {
     verified: boolean("verified").notNull().default(false),
     failed: boolean("failed").notNull().default(false),
     tries: integer("tries").notNull().default(0),
-    certResolver: varchar("certResolver").default("letsencrypt"),
+    certResolver: varchar("certResolver"),
     customCertResolver: varchar("customCertResolver")
 });
 

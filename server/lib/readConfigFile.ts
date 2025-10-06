@@ -51,6 +51,7 @@ export const configSchema = z
                         .nonempty("base_domain must not be empty")
                         .transform((url) => url.toLowerCase()),
                     cert_resolver: z.string().optional().default("letsencrypt"),
+                    custom_cert_resolver: z.string().optional(),
                     prefer_wildcard_cert: z.boolean().optional().default(false)
                 })
             )
@@ -187,6 +188,7 @@ export const configSchema = z
                 https_entrypoint: z.string().optional().default("websecure"),
                 additional_middlewares: z.array(z.string()).optional(),
                 cert_resolver: z.string().optional().default("letsencrypt"),
+                custom_cert_resolver: z.string().optional(),
                 prefer_wildcard_cert: z.boolean().optional().default(false),
                 certificates_path: z.string().default("/var/certificates"),
                 monitor_interval: z.number().default(5000),
