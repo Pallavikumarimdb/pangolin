@@ -18,7 +18,9 @@ export const domains = pgTable("domains", {
     type: varchar("type"), // "ns", "cname", "wildcard"
     verified: boolean("verified").notNull().default(false),
     failed: boolean("failed").notNull().default(false),
-    tries: integer("tries").notNull().default(0)
+    tries: integer("tries").notNull().default(0),
+    certResolver: varchar("certResolver").default("letsencrypt"),
+    customCertResolver: varchar("customCertResolver")
 });
 
 export const orgs = pgTable("orgs", {

@@ -24,6 +24,8 @@ export type DomainRow = {
     failed: boolean;
     tries: number;
     configManaged: boolean;
+    certResolver: string;
+    customCertResolver: string;
 };
 
 type Props = {
