@@ -1894,5 +1894,9 @@
     "pathRewriteRegex": "Regex",
     "pathRewriteStrip": "Strip",
     "pathRewriteStripLabel": "strip",
-    "sidebarEnableEnterpriseLicense": "Enable Enterprise License"
+    "sidebarEnableEnterpriseLicense": "Enable Enterprise License",
+    "certResolver": "Certificate Resolver",
+    "certResolverDescription": "Select the certificate resolver to use for this resource.",
+    "selectCertResolver": "Select Certificate Resolver",
+    "enterCustomResolver": "Enter Custom Resolver"
 }

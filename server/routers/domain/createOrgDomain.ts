@@ -24,9 +24,12 @@ const paramsSchema = z
 const bodySchema = z
     .object({
         type: z.enum(["ns", "cname", "wildcard"]),
-        baseDomain: subdomainSchema
+        baseDomain: subdomainSchema,
+        certResolver: z.enum(["letsencrypt", "custom"]).optional(), // optional, only for wildcard
+        customCertResolver: z.string().optional() // required if certResolver === "custom"
     })
     .strict();
+
 
 export type CreateDomainResponse = {
     domainId: string;
@@ -34,6 +37,8 @@ export type CreateDomainResponse = {
     cnameRecords?: { baseDomain: string; value: string }[];
     aRecords?: { baseDomain: string; value: string }[];
     txtRecords?: { baseDomain: string; value: string }[];
+    certResolver?: string | null;
+    customCertResolver?: string | null;
 };
 
 // Helper to check if a domain is a subdomain or equal to another domain
@@ -71,7 +76,7 @@ export async function createOrgDomain(
         }
 
         const { orgId } = parsedParams.data;
-        const { type, baseDomain } = parsedBody.data;
+        const { type, baseDomain, certResolver, customCertResolver } = parsedBody.data;
 
         if (build == "oss") {
             if (type !== "wildcard") {
@@ -254,7 +259,9 @@ export async function createOrgDomain(
                     domainId,
                     baseDomain,
                     type,
-                    verified: type === "wildcard" ? true : false
+                    verified: type === "wildcard" ? true : false,
+                    certResolver: certResolver || null,
+                    customCertResolver: customCertResolver || null
                 })
                 .returning();
 
@@ -325,7 +332,9 @@ export async function createOrgDomain(
                 cnameRecords,
                 txtRecords,
                 nsRecords,
-                aRecords
+                aRecords,
+                certResolver: returned.certResolver,
+                customCertResolver: returned.customCertResolver
             },
             success: true,
             error: false,

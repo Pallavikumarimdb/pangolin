@@ -45,6 +45,7 @@ import {
 import { useOrgContext } from "@app/hooks/useOrgContext";
 import { build } from "@server/build";
 import { toASCII, toUnicode } from 'punycode';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 
 // Helper functions for Unicode domain handling
@@ -96,7 +97,9 @@ const formSchema = z.object({
         .min(1, "Domain is required")
         .refine((val) => isValidDomainFormat(val), "Invalid domain format")
         .transform((val) => toPunycode(val)),
-    type: z.enum(["ns", "cname", "wildcard"])
+    type: z.enum(["ns", "cname", "wildcard"]),
+    certResolver: z.string().optional(),
+    customCertResolver: z.string().optional()
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -106,6 +109,12 @@ type CreateDomainFormProps = {
     setOpen: (open: boolean) => void;
     onCreated?: (domain: CreateDomainResponse) => void;
 };
+
+// Example cert resolver options (replace with real API/fetch if needed)
+const certResolverOptions = [
+    { id: "letsencrypt", title: "Let's Encrypt" },
+    { id: "custom", title: "Custom Resolver" }
+];
 
 export default function CreateDomainForm({
     open,
@@ -125,15 +134,26 @@ export default function CreateDomainForm({
         resolver: zodResolver(formSchema),
         defaultValues: {
             baseDomain: "",
-            type: build == "oss" || !env.flags.usePangolinDns ? "wildcard" : "ns"
+            type: build == "oss" || !env.flags.usePangolinDns ? "wildcard" : "ns",
+            certResolver: "",
+            customCertResolver: ""
         }
     });
 
-    function reset() {
+    const baseDomain = form.watch("baseDomain");
+    const domainType = form.watch("type");
+
+    const punycodePreview = useMemo(() => {
+        if (!baseDomain) return "";
+        const punycode = toPunycode(baseDomain);
+        return punycode !== baseDomain.toLowerCase() ? punycode : "";
+    }, [baseDomain]);
+
+    const reset = () => {
         form.reset();
         setLoading(false);
         setCreatedDomain(null);
-    }
+    };
 
     async function onSubmit(values: FormValues) {
         setLoading(true);
@@ -158,17 +178,9 @@ export default function CreateDomainForm({
         } finally {
             setLoading(false);
         }
-    }
+    };
 
-    const baseDomain = form.watch("baseDomain");
-    const domainInputValue = form.watch("baseDomain") || "";
-
-    const punycodePreview = useMemo(() => {
-        if (!domainInputValue) return "";
-        const punycode = toPunycode(domainInputValue);
-        return punycode !== domainInputValue.toLowerCase() ? punycode : "";
-    }, [domainInputValue]);
-
+    // Domain type options
     let domainOptions: any = [];
     if (build != "oss" && env.flags.usePangolinDns) {
         domainOptions = [
@@ -250,7 +262,7 @@ export default function CreateDomainForm({
                                                         <AlertTitle>{t("internationaldomaindetected")}</AlertTitle>
                                                         <AlertDescription>
                                                             <div className="mt-2 space-y-1">
-                                                                <p>{t("willbestoredas")} <code className="font-mono px-1 py-0.5 rounded">{punycodePreview}</code></p>
+                                                            <p>{t("willbestoredas")} <code className="font-mono px-1 py-0.5 rounded">{punycodePreview}</code></p>
                                                             </div>
                                                         </AlertDescription>
                                                     </Alert>
@@ -260,6 +272,47 @@ export default function CreateDomainForm({
                                         </FormItem>
                                     )}
                                 />
+                                {domainType === "wildcard" && (
+                                    <FormField
+                                        control={form.control}
+                                        name="certResolver"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>{t("certResolver")}</FormLabel>
+                                                <FormControl>
+                                                    <Select
+                                                        value={field.value}
+                                                        onValueChange={(val) => field.onChange(val)}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder={t("selectCertResolver")} />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {certResolverOptions.map((opt) => (
+                                                                <SelectItem key={opt.id} value={opt.id}>
+                                                                    {opt.title}
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </FormControl>
+                                                <FormMessage />
+                                                {field.value === "custom" && (
+                                                    <FormControl className="mt-2">
+                                                        <Input
+                                                            placeholder={t("enterCustomResolver")}
+                                                            value={form.watch("customCertResolver") || ""}
+                                                            onChange={(e) =>
+                                                                form.setValue("customCertResolver", e.target.value)
+                                                            }
+                                                        />
+                                                    </FormControl>
+                                                )}
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                )}
                             </form>
                         </Form>
                     ) : (

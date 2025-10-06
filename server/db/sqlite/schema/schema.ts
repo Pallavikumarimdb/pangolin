@@ -11,7 +11,9 @@ export const domains = sqliteTable("domains", {
     type: text("type"), // "ns", "cname", "wildcard"
     verified: integer("verified", { mode: "boolean" }).notNull().default(false),
     failed: integer("failed", { mode: "boolean" }).notNull().default(false),
-    tries: integer("tries").notNull().default(0)
+    tries: integer("tries").notNull().default(0),
+    certResolver: text("certResolver").default("letsencrypt"),
+    customCertResolver: text("customCertResolver")
 });
 
 export const orgs = sqliteTable("orgs", {
