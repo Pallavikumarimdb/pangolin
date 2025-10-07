@@ -15,6 +15,7 @@ import {
     certificates,
     db,
     domainNamespaces,
+    domains,
     exitNodes,
     loginPage,
     targetHealthCheck
@@ -79,7 +80,7 @@ export async function getTraefikConfig(
             path: targets.path,
             pathMatchType: targets.pathMatchType,
             priority: targets.priority,
-            
+
             // Site fields
             siteId: sites.siteId,
             siteType: sites.type,
@@ -89,12 +90,15 @@ export async function getTraefikConfig(
             // Namespace
             domainNamespaceId: domainNamespaces.domainNamespaceId,
             // Certificate
-            certificateStatus: certificates.status
+            certificateStatus: certificates.status,
+            domainCertResolver: domains.certResolver,
+            domainCustomCertResolver: domains.customCertResolver
         })
         .from(sites)
         .innerJoin(targets, eq(targets.siteId, sites.siteId))
         .innerJoin(resources, eq(resources.resourceId, targets.resourceId))
         .leftJoin(certificates, eq(certificates.domainId, resources.domainId))
+        .leftJoin(domains, eq(domains.domainId, resources.domainId))
         .leftJoin(
             targetHealthCheck,
             eq(targetHealthCheck.targetId, targets.targetId)
@@ -163,7 +167,9 @@ export async function getTraefikConfig(
                 headers: row.headers,
                 path: row.path, // the targets will all have the same path
                 pathMatchType: row.pathMatchType, // the targets will all have the same pathMatchType
-                priority: priority // may be null, we fallback later
+                priority: priority, // may be null, we fallback later
+                domainCertResolver: row.domainCertResolver,
+                domainCustomCertResolver: row.domainCustomCertResolver
             });
         }
 
@@ -263,30 +269,41 @@ export async function getTraefikConfig(
             }
 
             const configDomain = config.getDomain(resource.domainId);
+            const rawTraefikCfg = config.getRawConfig().traefik || {};
+            const globalDefaultResolver = rawTraefikCfg.cert_resolver;
 
-            let certResolver: string, preferWildcardCert: boolean;
-            if (!configDomain) {
-                certResolver = config.getRawConfig().traefik.cert_resolver;
-                preferWildcardCert =
-                    config.getRawConfig().traefik.prefer_wildcard_cert;
+
+            const domainCertResolver =
+                resource.domainCertResolver ?? configDomain?.cert_resolver;
+            const domainCustomResolver =
+                resource.domainCustomCertResolver;
+            const preferWildcardCert =
+                resource.preferWildcardCert ?? configDomain?.prefer_wildcard_cert ?? false;
+
+            let resolverName: string | undefined;
+
+            // Handle both letsencrypt & custom cases
+            if (domainCertResolver === "custom") {
+                resolverName = domainCustomResolver?.trim();
+            } else if (domainCertResolver) {
+                resolverName = domainCertResolver;
             } else {
-                certResolver = configDomain.cert_resolver;
-                preferWildcardCert = configDomain.prefer_wildcard_cert;
+                resolverName = globalDefaultResolver;
             }
 
             let tls = {};
             if (build == "oss") {
                 tls = {
-                    certResolver: certResolver,
+                    certResolver: resolverName,
                     ...(preferWildcardCert
                         ? {
-                              domains: [
-                                  {
-                                      main: wildCard
-                                  }
-                              ]
-                          }
-                        : {})
+                            domains: [
+                                {
+                                    main: wildCard,
+                                },
+                            ],
+                        }
+                        : {}),
                 };
             }
 
@@ -419,7 +436,7 @@ export async function getTraefikConfig(
 
                         return (
                             (targets as TargetWithSite[])
-                            .filter((target: TargetWithSite) => {
+                                .filter((target: TargetWithSite) => {
                                     if (!target.enabled) {
                                         return false;
                                     }
@@ -440,7 +457,7 @@ export async function getTraefikConfig(
                                         ) {
                                             return false;
                                         }
-                                } else if (target.site.type === "newt") {
+                                    } else if (target.site.type === "newt") {
                                         if (
                                             !target.internalPort ||
                                             !target.method ||
@@ -448,10 +465,10 @@ export async function getTraefikConfig(
                                         ) {
                                             return false;
                                         }
-                                }
-                                return true;
-                            })
-                            .map((target: TargetWithSite) => {
+                                    }
+                                    return true;
+                                })
+                                .map((target: TargetWithSite) => {
                                     if (
                                         target.site.type === "local" ||
                                         target.site.type === "wireguard"
@@ -459,14 +476,14 @@ export async function getTraefikConfig(
                                         return {
                                             url: `${target.method}://${target.ip}:${target.port}`
                                         };
-                                } else if (target.site.type === "newt") {
+                                    } else if (target.site.type === "newt") {
                                         const ip =
                                             target.site.subnet!.split("/")[0];
                                         return {
                                             url: `${target.method}://${ip}:${target.internalPort}`
                                         };
-                                }
-                            })
+                                    }
+                                })
                                 // filter out duplicates
                                 .filter(
                                     (v, i, a) =>
@@ -478,14 +495,14 @@ export async function getTraefikConfig(
                     })(),
                     ...(resource.stickySession
                         ? {
-                              sticky: {
-                                  cookie: {
-                                      name: "p_sticky", // TODO: make this configurable via config.yml like other cookies
-                                      secure: resource.ssl,
-                                      httpOnly: true
-                                  }
-                              }
-                          }
+                            sticky: {
+                                cookie: {
+                                    name: "p_sticky", // TODO: make this configurable via config.yml like other cookies
+                                    secure: resource.ssl,
+                                    httpOnly: true
+                                }
+                            }
+                        }
                         : {})
                 }
             };
@@ -586,13 +603,13 @@ export async function getTraefikConfig(
                     })(),
                     ...(resource.stickySession
                         ? {
-                              sticky: {
-                                  ipStrategy: {
-                                      depth: 0,
-                                      sourcePort: true
-                                  }
-                              }
-                          }
+                            sticky: {
+                                ipStrategy: {
+                                    depth: 0,
+                                    sourcePort: true
+                                }
+                            }
+                        }
                         : {})
                 }
             };
@@ -629,10 +646,9 @@ export async function getTraefikConfig(
                     loadBalancer: {
                         servers: [
                             {
-                                url: `http://${
-                                    config.getRawConfig().server
+                                url: `http://${config.getRawConfig().server
                                         .internal_hostname
-                                }:${config.getRawConfig().server.next_port}`
+                                    }:${config.getRawConfig().server.next_port}`
                             }
                         ]
                     }
