@@ -254,68 +254,24 @@ export async function getTraefikConfig(
             }
 
             const configDomain = config.getDomain(resource.domainId);
-
-            let certResolverFromConfig: string | undefined;
-            let preferWildcardCert = false;
-
             const rawTraefikCfg = config.getRawConfig().traefik || {};
-            const globalDefaultResolver: string | undefined = rawTraefikCfg.cert_resolver;
-            const availableResolvers = rawTraefikCfg.custom_cert_resolver
-                ? Object.keys(rawTraefikCfg.custom_cert_resolver)
-                : [];
+            const globalDefaultResolver = rawTraefikCfg.cert_resolver;
 
-            // Priority 1: Read from YAML config (if exists)
-            if (configDomain) {
-                certResolverFromConfig =
-                    configDomain.cert_resolver ??
-                    configDomain.custom_cert_resolver;
-                preferWildcardCert = !!(configDomain.prefer_wildcard_cert);
-            }
 
-            // Priority 2: Override with database domain settings (if exists)
-            let finalCertResolver: string | undefined;
-            let finalCustomCertResolver: string | undefined;
+            const domainCertResolver =
+                resource.domainCertResolver ?? configDomain?.cert_resolver;
+            const domainCustomResolver =
+                resource.domainCustomCertResolver;
+            const preferWildcardCert =
+                resource.preferWildcardCert ?? configDomain?.prefer_wildcard_cert ?? false;
 
-            if (resource.domainCertResolver) {
-                finalCertResolver = resource.domainCertResolver;
-                if (resource.domainCertResolver === "custom" && resource.domainCustomCertResolver) {
-                    finalCustomCertResolver = resource.domainCustomCertResolver;
-                }
-            } else {
-                // Fall back to config
-                finalCertResolver = certResolverFromConfig;
-            }
-
-            // Resolve the final resolver name
             let resolverName: string | undefined;
 
-            if (finalCertResolver) {
-                if (finalCertResolver === "custom") {
-                    // Check database custom resolver first, then config
-                    const customResolver = finalCustomCertResolver || configDomain?.custom_cert_resolver;
-
-                    if (customResolver && typeof customResolver === "string" && customResolver.trim()) {
-                        resolverName = customResolver.trim();
-                    } else {
-                        resolverName = globalDefaultResolver;
-                        logger.warn(
-                            `Domain ${resource.domainId} requested custom cert resolver but none set; falling back to global resolver ${resolverName}`
-                        );
-                    }
-                } else {
-                    // Validate against available resolvers
-                    if (
-                        availableResolvers.length === 0 ||
-                        availableResolvers.includes(finalCertResolver)
-                    ) {
-                        resolverName = finalCertResolver;
-                    } else {
-                        logger.warn(
-                            `Unknown cert resolver "${finalCertResolver}" for domain ${resource.domainId}; falling back to global resolver.`
-                        );
-                        resolverName = globalDefaultResolver;
-                    }
-                }
+            // Handle both letsencrypt & custom cases
+            if (domainCertResolver === "custom") {
+                resolverName = domainCustomResolver?.trim();
+            } else if (domainCertResolver) {
+                resolverName = domainCertResolver;
             } else {
                 resolverName = globalDefaultResolver;
             }
@@ -332,6 +288,7 @@ export async function getTraefikConfig(
                       }
                     : {})
             };
+
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
