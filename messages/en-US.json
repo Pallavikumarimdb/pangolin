@@ -1744,5 +1744,6 @@
     "certResolver": "Certificate Resolver",
     "certResolverDescription": "Select the certificate resolver to use for this resource.",
     "selectCertResolver": "Select Certificate Resolver",
-    "enterCustomResolver": "Enter Custom Resolver"
+    "enterCustomResolver": "Enter Custom Resolver",
+    "preferWildcardCert": "Prefer Wildcard Certificate"
 }

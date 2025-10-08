@@ -44,7 +44,7 @@ async function queryDomains(orgId: string, limit: number, offset: number) {
             tries: domains.tries,
             configManaged: domains.configManaged,
             certResolver: domains.certResolver,
-            customCertResolver: domains.customCertResolver,
+            preferWildcardCert: domains.preferWildcardCert
         })
         .from(orgDomains)
         .where(eq(orgDomains.orgId, orgId))
