@@ -969,7 +969,7 @@ export default function ReverseProxyTargets(props: {
                                 </SelectContent>
                             </Select>
 
-                            <div className="flex items-center justify-center bg-gray-400 text-black px-1 h-9">
+                            <div className="flex items-center justify-center bg-gray-200 text-black px-2 h-9">
                                 {"://"}
                             </div>
 
@@ -1009,11 +1009,10 @@ export default function ReverseProxyTargets(props: {
                                     }
                                 }}
                             />
-                            <div className="flex items-center justify-center bg-gray-400 text-black px-1 h-9">
+                            <div className="flex items-center justify-center bg-gray-200 text-black px-2 h-9">
                                 {":"}
                             </div>
                             <Input
-                                type="number"
                                 placeholder="Port"
                                 defaultValue={row.original.port}
                                 className="min-w-[60px] pl-0 border-none placeholder-gray-400"

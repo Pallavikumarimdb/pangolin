@@ -58,7 +58,7 @@ import {
 } from "@app/components/ui/popover";
 import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
 import { cn } from "@app/lib/cn";
-import { ArrowRight, Info, MoveRight, Plus, SquareArrowOutUpRight } from "lucide-react";
+import { ArrowRight, CircleCheck, CircleX, Info, MoveRight, Plus, SquareArrowOutUpRight } from "lucide-react";
 import CopyTextBox from "@app/components/CopyTextBox";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -96,6 +96,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/c
 import { PathMatchDisplay, PathMatchModal, PathRewriteDisplay, PathRewriteModal } from "@app/components/PathMatchRenameModal";
 import { TargetModal } from "@app/components/TargetModal";
 import { TargetDisplay } from "@app/components/TargetDisplay";
+import { Badge } from "@app/components/ui/badge";
 
 
 const baseResourceFormSchema = z.object({
@@ -607,6 +608,21 @@ export default function Page() {
 
     const columns: ColumnDef<LocalTarget>[] = [
         {
+            accessorKey: "enabled",
+            header: t("enabled"),
+            cell: ({ row }) => (
+                <Switch
+                    defaultChecked={row.original.enabled}
+                    onCheckedChange={(val) =>
+                        updateTarget(row.original.targetId, {
+                            ...row.original,
+                            enabled: val
+                        })
+                    }
+                />
+            )
+        },
+        {
             id: "priority",
             header: () => (
                 <div className="flex items-center gap-2">
@@ -674,55 +690,37 @@ export default function Page() {
                                 </Button>
                             }
                         />
-                        <Button
-                            variant="text"
-                            size="sm"
-                            className="px-1"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    path: null,
-                                    pathMatchType: null,
-                                    rewritePath: null,
-                                    rewritePathType: null
-                                });
-                            }}
-                        >
-                            ×
-                        </Button>
-
-                        {/* <MoveRight className="ml-1 h-4 w-4" /> */}
+                        <MoveRight className="ml-1 h-4 w-4" />
                     </div>
                 ) : (
-                    <PathMatchModal
-                        value={{
-                            path: row.original.path,
+                    <div className="flex items-center gap-1">
+                        <PathMatchModal
+                            value={{
+                                path: row.original.path,
                             pathMatchType: row.original.pathMatchType,
-                        }}
+                            }}
                         onChange={(config) => updateTarget(row.original.targetId, config)}
-                        trigger={
-                            <Button variant="outline">
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("matchPath")}
-                            </Button>
-                        }
-                    />
+                            trigger={
+                                <Button variant="outline">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    {t("matchPath")}
+                                </Button>
+                            }
+                        />
+                        <MoveRight className="ml-1 h-4 w-4" />
+                    </div>
                 );
-            },
+            }
         },
         {
-            accessorKey: "siteId",
-            header: t("site"),
+            accessorKey: "address",
+            header: t("address"),
             cell: ({ row }) => {
                 const selectedSite = sites.find(
                     (site) => site.siteId === row.original.siteId
                 );
 
-                const handleContainerSelectForTarget = (
-                    hostname: string,
-                    port?: number
-                ) => {
+                const handleContainerSelectForTarget = (hostname: string, port?: number) => {
                     updateTarget(row.original.targetId, {
                         ...row.original,
                         ip: hostname
@@ -736,158 +734,151 @@ export default function Page() {
                 };
 
                 return (
-                    <div className="flex gap-2 items-center">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                        "justify-between flex-1",
-                                        !row.original.siteId &&
-                                        "text-muted-foreground"
-                                    )}
-                                >
-                                    {row.original.siteId
-                                        ? selectedSite?.name
-                                        : t("siteSelect")}
-                                    <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder={t("siteSearch")}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            {t("siteNotFound")}
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {sites.map((site) => (
-                                                <CommandItem
-                                                    value={`${site.siteId}:${site.name}:${site.niceId}`}
-                                                    key={site.siteId}
-                                                    onSelect={() => {
-                                                        updateTarget(
-                                                            row.original
-                                                                .targetId,
-                                                            {
-                                                                siteId: site.siteId
-                                                            }
-                                                        );
-                                                    }}
-                                                >
-                                                    <CheckIcon
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            site.siteId ===
-                                                                row.original
-                                                                    .siteId
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {site.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {selectedSite && selectedSite.type === "newt" && (() => {
-                            const dockerState = getDockerStateForSite(selectedSite.siteId);
-                            return (
-                                <ContainersSelector
-                                    site={selectedSite}
-                                    containers={dockerState.containers}
-                                    isAvailable={dockerState.isAvailable}
-                                    onContainerSelect={handleContainerSelectForTarget}
-                                    onRefresh={() => refreshContainersForSite(selectedSite.siteId)}
-                                />
-                            );
-                        })()}
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "target",
-            header: t("target"),
-            cell: ({ row }) => {
-                const hasTarget = !!(row.original.ip || row.original.port || row.original.method);
-
-                return hasTarget ? (
                     <div className="flex items-center gap-1">
-                        <TargetModal
-                            value={{
-                                method: row.original.method,
-                                ip: row.original.ip,
-                                port: row.original.port
-                            }}
-                            onChange={(config) =>
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    ...config
-                                })
-                            }
-                            showMethod={baseForm.watch("http")}
-                            trigger={
-                                <Button
-                                    variant="outline"
-                                    className="flex items-center gap-2 max-w-md text-left cursor-pointer"
-                                >
-                                    <TargetDisplay
-                                        value={{
-                                            method: row.original.method,
-                                            ip: row.original.ip,
-                                            port: row.original.port
-                                        }}
-                                        showMethod={baseForm.watch("http")}
-                                    />
-                                </Button>
-                            }
-                        />
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    method: null,
-                                    ip: "",
-                                    port: undefined
-                                });
-                            }}
-                        >
-                            ×
+                        <Button variant={"outline"} className="w-full justify-start py-0  space-x-2 px-0 hover:bg-card cursor-default">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        role="combobox"
+                                        className={cn(
+                                            "min-w-[90px] justify-between text-sm font-medium border-r pr-4 rounded-none h-8 hover:bg-transparent",
+                                            !row.original.siteId && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {row.original.siteId ? selectedSite?.name : t("siteSelect")}
+                                        <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-[180px]">
+                                    <Command>
+                                        <CommandInput placeholder={t("siteSearch")} />
+                                        <CommandList>
+                                            <CommandEmpty>{t("siteNotFound")}</CommandEmpty>
+                                            <CommandGroup>
+                                                {sites.map((site) => (
+                                                    <CommandItem
+                                                        key={site.siteId}
+                                                        value={`${site.siteId}:${site.name}`}
+                                                        onSelect={() =>
+                                                            updateTarget(row.original.targetId, { siteId: site.siteId })
+                                                        }
+                                                    >
+                                                        <CheckIcon
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                site.siteId === row.original.siteId
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {site.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            {selectedSite &&
+                                selectedSite.type === "newt" &&
+                                (() => {
+                                    const dockerState = getDockerStateForSite(
+                                        selectedSite.siteId
+                                    );
+                                    return (
+                                        <ContainersSelector
+                                            site={selectedSite}
+                                            containers={dockerState.containers}
+                                            isAvailable={dockerState.isAvailable}
+                                            onContainerSelect={
+                                                handleContainerSelectForTarget
+                                            }
+                                            onRefresh={() =>
+                                                refreshContainersForSite(
+                                                    selectedSite.siteId
+                                                )
+                                            }
+                                        />
+                                    );
+                                })()}
+
+                            <Select
+                                defaultValue={row.original.method ?? "http"}
+                                onValueChange={(value) =>
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        method: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="h-8 px-2 w-[70px] text-sm font-normal border-none bg-transparent shadow-none focus:ring-0 focus:outline-none focus-visible:ring-0 data-[state=open]:bg-transparent">
+                                    {row.original.method || "http"}
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="http">http</SelectItem>
+                                    <SelectItem value="https">https</SelectItem>
+                                    <SelectItem value="h2c">h2c</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center justify-center bg-gray-200 text-black px-2 h-9">
+                                {"://"}
+                            </div>
+
+                            <Input
+                                defaultValue={row.original.ip}
+                                placeholder="IP / Hostname"
+                                className="min-w-[130px] border-none placeholder-gray-400"
+                                onBlur={(e) => {
+                                    const input = e.target.value.trim();
+                                    const hasProtocol = /^(https?|h2c):\/\//.test(input);
+                                    const hasPort = /:\d+(?:\/|$)/.test(input);
+
+                                    if (hasProtocol || hasPort) {
+                                        const parsed = parseHostTarget(input);
+                                        if (parsed) {
+                                            updateTarget(row.original.targetId, {
+                                                ...row.original,
+                                                method: hasProtocol
+                                                    ? parsed.protocol
+                                                    : row.original.method,
+                                                ip: parsed.host,
+                                                port: hasPort
+                                                    ? parsed.port
+                                                    : row.original.port
+                                            });
+                                        } else {
+                                            updateTarget(row.original.targetId, {
+                                                ...row.original,
+                                                ip: input
+                                            });
+                                        }
+                                    } else {
+                                        updateTarget(row.original.targetId, {
+                                            ...row.original,
+                                            ip: input
+                                        });
+                                    }
+                                }}
+                            />
+                            <div className="flex items-center justify-center bg-gray-200 text-black px-2 h-9">
+                                {":"}
+                            </div>
+                            <Input
+                                placeholder="Port"
+                                defaultValue={row.original.port}
+                                className="min-w-[60px] pl-0 border-none placeholder-gray-400"
+                                onBlur={(e) =>
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        port: parseInt(e.target.value, 10)
+                                    })
+                                }
+                            />
                         </Button>
-                        <MoveRight className="mr-2 h-4 w-4" />
+                        <MoveRight className="ml-1 h-4 w-4" />
                     </div>
-                ) : (
-                    <TargetModal
-                        value={{
-                            method: row.original.method,
-                            ip: row.original.ip,
-                            port: row.original.port
-                        }}
-                        onChange={(config) =>
-                            updateTarget(row.original.targetId, {
-                                ...row.original,
-                                ...config
-                            })
-                        }
-                        showMethod={baseForm.watch("http")}
-                        trigger={
-                            <Button variant="outline">
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("configureTarget")}
-                            </Button>
-                        }
-                    />
                 );
             }
         },
@@ -895,18 +886,22 @@ export default function Page() {
             accessorKey: "rewritePath",
             header: t("rewritePath"),
             cell: ({ row }) => {
-                const hasRewritePath = !!(row.original.rewritePath || row.original.rewritePathType);
-                const noPathMatch = !row.original.path && !row.original.pathMatchType;
+                const hasRewritePath = !!(
+                    row.original.rewritePath || row.original.rewritePathType
+                );
+                const noPathMatch =
+                    !row.original.path && !row.original.pathMatchType;
 
                 return hasRewritePath && !noPathMatch ? (
                     <div className="flex items-center gap-1">
-                        {/* <MoveRight className="mr-2 h-4 w-4" /> */}
                         <PathRewriteModal
                             value={{
                                 rewritePath: row.original.rewritePath,
-                                rewritePathType: row.original.rewritePathType,
+                                rewritePathType: row.original.rewritePathType
                             }}
-                            onChange={(config) => updateTarget(row.original.targetId, config)}
+                            onChange={(config) =>
+                                updateTarget(row.original.targetId, config)
+                            }
                             trigger={
                                 <Button
                                     variant="outline"
@@ -915,36 +910,25 @@ export default function Page() {
                                 >
                                     <PathRewriteDisplay
                                         value={{
-                                            rewritePath: row.original.rewritePath,
-                                            rewritePathType: row.original.rewritePathType,
+                                            rewritePath:
+                                                row.original.rewritePath,
+                                            rewritePathType:
+                                                row.original.rewritePathType
                                         }}
                                     />
                                 </Button>
                             }
                         />
-                        <Button
-                            size="sm"
-                            variant="text"
-                            className="px-1"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    rewritePath: null,
-                                    rewritePathType: null,
-                                });
-                            }}
-                        >
-                            ×
-                        </Button>
                     </div>
                 ) : (
                     <PathRewriteModal
                         value={{
                             rewritePath: row.original.rewritePath,
-                            rewritePathType: row.original.rewritePathType,
+                            rewritePathType: row.original.rewritePathType
                         }}
-                        onChange={(config) => updateTarget(row.original.targetId, config)}
+                        onChange={(config) =>
+                            updateTarget(row.original.targetId, config)
+                        }
                         trigger={
                             <Button variant="outline" disabled={noPathMatch}>
                                 <Plus className="h-4 w-4 mr-2" />
@@ -954,22 +938,7 @@ export default function Page() {
                         disabled={noPathMatch}
                     />
                 );
-            },
-        },
-        {
-            accessorKey: "enabled",
-            header: t("enabled"),
-            cell: ({ row }) => (
-                <Switch
-                    defaultChecked={row.original.enabled}
-                    onCheckedChange={(val) =>
-                        updateTarget(row.original.targetId, {
-                            ...row.original,
-                            enabled: val
-                        })
-                    }
-                />
-            )
+            }
         },
         {
             id: "actions",
