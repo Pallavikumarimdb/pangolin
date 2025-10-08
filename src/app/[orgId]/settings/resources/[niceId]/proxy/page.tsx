@@ -672,6 +672,21 @@ export default function ReverseProxyTargets(props: {
 
     const columns: ColumnDef<LocalTarget>[] = [
         {
+            accessorKey: "enabled",
+            header: t("enabled"),
+            cell: ({ row }) => (
+                <Switch
+                    defaultChecked={row.original.enabled}
+                    onCheckedChange={(val) =>
+                        updateTarget(row.original.targetId, {
+                            ...row.original,
+                            enabled: val
+                        })
+                    }
+                />
+            )
+        },
+        {
             id: "priority",
             header: () => (
                 <div className="flex items-center gap-2">
@@ -712,6 +727,82 @@ export default function ReverseProxyTargets(props: {
             }
         },
         {
+            accessorKey: "healthCheck",
+            header: t("healthCheck"),
+            cell: ({ row }) => {
+                const status = row.original.hcHealth || "unknown";
+                const isEnabled = row.original.hcEnabled;
+
+                const getStatusColor = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return "green";
+                        case "unhealthy":
+                            return "red";
+                        case "unknown":
+                        default:
+                            return "secondary";
+                    }
+                };
+
+                const getStatusText = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return t("healthCheckHealthy");
+                        case "unhealthy":
+                            return t("healthCheckUnhealthy");
+                        case "unknown":
+                        default:
+                            return t("healthCheckUnknown");
+                    }
+                };
+
+                const getStatusIcon = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return <CircleCheck className="w-3 h-3" />;
+                        case "unhealthy":
+                            return <CircleX className="w-3 h-3" />;
+                        case "unknown":
+                        default:
+                            return null;
+                    }
+                };
+
+                return (
+                    <>
+                        {row.original.siteType === "newt" ? (
+                            <Button variant="outline"
+                                className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer">
+                                <div className="flex items-center space-x-1">
+                                    <Badge variant={getStatusColor(status)}>
+                                        <div className="flex items-center gap-1">
+                                            {getStatusIcon(status)}
+                                            {getStatusText(status)}
+                                        </div>
+                                    </Badge>
+                                    <Button
+                                        variant="text"
+                                        size="sm"
+                                        onClick={() =>
+                                            openHealthCheckDialog(row.original)
+                                        }
+                                        className="h-6 w-6 p-0"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </Button>
+                        ) : (
+                            <Badge variant="secondary">
+                                {t("healthCheckNotAvailable")}
+                            </Badge>
+                        )}
+                    </>
+                );
+            }
+        },
+        {
             accessorKey: "path",
             header: t("matchPath"),
             cell: ({ row }) => {
@@ -744,42 +835,27 @@ export default function ReverseProxyTargets(props: {
                                 </Button>
                             }
                         />
-                        <Button
-                           variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    path: null,
-                                    pathMatchType: null,
-                                    rewritePath: null,
-                                    rewritePathType: null
-                                });
-                            }}
-                        >
-                            ×
-                        </Button>
-
                         <MoveRight className="ml-1 h-4 w-4" />
                     </div>
                 ) : (
-                    <PathMatchModal
-                        value={{
-                            path: row.original.path,
-                            pathMatchType: row.original.pathMatchType
-                        }}
-                        onChange={(config) =>
-                            updateTarget(row.original.targetId, config)
-                        }
-                        trigger={
-                            <Button variant="outline">
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("matchPath")}
-                            </Button>
-                        }
-                    />
+                    <div className="flex items-center gap-1">
+                        <PathMatchModal
+                            value={{
+                                path: row.original.path,
+                                pathMatchType: row.original.pathMatchType
+                            }}
+                            onChange={(config) =>
+                                updateTarget(row.original.targetId, config)
+                            }
+                            trigger={
+                                <Button variant="outline">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    {t("matchPath")}
+                                </Button>
+                            }
+                        />
+                        <MoveRight className="ml-1 h-4 w-4" />
+                    </div>
                 );
             }
         },
@@ -931,22 +1007,6 @@ export default function ReverseProxyTargets(props: {
                                 </Button>
                             }
                         />
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    method: null,
-                                    ip: "",
-                                    port: undefined
-                                });
-                            }}
-                        >
-                            ×
-                        </Button>
                         <MoveRight className="mr-2 h-4 w-4" />
                     </div>
                 ) : (
@@ -1010,21 +1070,6 @@ export default function ReverseProxyTargets(props: {
                                 </Button>
                             }
                         />
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    rewritePath: null,
-                                    rewritePathType: null
-                                });
-                            }}
-                        >
-                            ×
-                        </Button>
                     </div>
                 ) : (
                     <PathRewriteModal
@@ -1065,94 +1110,7 @@ export default function ReverseProxyTargets(props: {
         //         </Select>
         //     ),
         //         },
-        {
-            accessorKey: "healthCheck",
-            header: t("healthCheck"),
-            cell: ({ row }) => {
-                const status = row.original.hcHealth || "unknown";
-                const isEnabled = row.original.hcEnabled;
 
-                const getStatusColor = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return "green";
-                        case "unhealthy":
-                            return "red";
-                        case "unknown":
-                        default:
-                            return "secondary";
-                    }
-                };
-
-                const getStatusText = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return t("healthCheckHealthy");
-                        case "unhealthy":
-                            return t("healthCheckUnhealthy");
-                        case "unknown":
-                        default:
-                            return t("healthCheckUnknown");
-                    }
-                };
-
-                const getStatusIcon = (status: string) => {
-                    switch (status) {
-                        case "healthy":
-                            return <CircleCheck className="w-3 h-3" />;
-                        case "unhealthy":
-                            return <CircleX className="w-3 h-3" />;
-                        case "unknown":
-                        default:
-                            return null;
-                    }
-                };
-
-                return (
-                    <>
-                        {row.original.siteType === "newt" ? (
-                            <div className="flex items-center space-x-1">
-                                <Badge variant={getStatusColor(status)}>
-                                    <div className="flex items-center gap-1">
-                                        {getStatusIcon(status)}
-                                        {getStatusText(status)}
-                                    </div>
-                                </Badge>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() =>
-                                        openHealthCheckDialog(row.original)
-                                    }
-                                    className="h-6 w-6 p-0"
-                                >
-                                    <Settings className="h-3 w-3" />
-                                </Button>
-                            </div>
-                        ) : (
-                            <span className="text-sm text-muted-foreground">
-                                {t("healthCheckNotAvailable")}
-                            </span>
-                        )}
-                    </>
-                );
-            }
-        },
-        {
-            accessorKey: "enabled",
-            header: t("enabled"),
-            cell: ({ row }) => (
-                <Switch
-                    defaultChecked={row.original.enabled}
-                    onCheckedChange={(val) =>
-                        updateTarget(row.original.targetId, {
-                            ...row.original,
-                            enabled: val
-                        })
-                    }
-                />
-            )
-        },
         {
             id: "actions",
             cell: ({ row }) => (
