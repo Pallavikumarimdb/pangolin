@@ -250,7 +250,7 @@ export function PathMatchDisplay({
 
   return (
     <div className="flex items-center gap-2 w-full text-left">
-      <Badge variant="secondary" className="font-mono text-xs shrink-0">
+      <Badge variant="secondary" className="text-xs shrink-0">
         {getTypeLabel(value.pathMatchType)}
       </Badge>
       <code className="text-sm flex-1 truncate" title={value.path}>
@@ -281,7 +281,7 @@ export function PathRewriteDisplay({
 
   return (
     <div className="flex items-center gap-2 w-full text-left">
-      <Badge variant="secondary" className="font-mono text-xs shrink-0">
+      <Badge variant="secondary" className="text-xs shrink-0">
         {getTypeLabel(value.rewritePathType)}
       </Badge>
       <code className="text-sm flex-1 truncate" title={value.rewritePath || ""}>

@@ -109,7 +109,12 @@ import {
     PathRewriteModal
 } from "@app/components/PathMatchRenameModal";
 import { Badge } from "@app/components/ui/badge";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger
+} from "@app/components/ui/tooltip";
 
 const addTargetSchema = z
     .object({
@@ -517,7 +522,7 @@ export default function ReverseProxyTargets(props: {
             pathMatchType: null,
             rewritePath: null,
             rewritePathType: null,
-            priority: 100,
+            priority: 100
         });
     }
 
@@ -537,11 +542,11 @@ export default function ReverseProxyTargets(props: {
             targets.map((target) =>
                 target.targetId === targetId
                     ? {
-                        ...target,
-                        ...data,
-                        updated: true,
-                        siteType: site?.type || null
-                    }
+                          ...target,
+                          ...data,
+                          updated: true,
+                          siteType: site?.type || null
+                      }
                     : target
             )
         );
@@ -552,10 +557,10 @@ export default function ReverseProxyTargets(props: {
             targets.map((target) =>
                 target.targetId === targetId
                     ? {
-                        ...target,
-                        ...config,
-                        updated: true
-                    }
+                          ...target,
+                          ...config,
+                          updated: true
+                      }
                     : target
             )
         );
@@ -695,7 +700,12 @@ export default function ReverseProxyTargets(props: {
                                 <Info className="h-4 w-4 text-muted-foreground" />
                             </TooltipTrigger>
                             <TooltipContent className="max-w-xs">
-                                <p>Higher priority routes are evaluated first. Priority = 100 means automatic ordering (system decides). Use another number to enforce manual priority.</p>
+                                <p>
+                                    Higher priority routes are evaluated first.
+                                    Priority = 100 means automatic ordering
+                                    (system decides). Use another number to
+                                    enforce manual priority.
+                                </p>
                             </TooltipContent>
                         </Tooltip>
                     </TooltipProvider>
@@ -770,8 +780,13 @@ export default function ReverseProxyTargets(props: {
                 return (
                     <>
                         {row.original.siteType === "newt" ? (
-                            <Button variant="outline"
-                                className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer">
+                            <Button
+                                variant="outline"
+                                className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer"
+                                        onClick={() =>
+                                            openHealthCheckDialog(row.original)
+                                        }
+                            >
                                 <div className="flex items-center space-x-1">
                                     <Badge variant={getStatusColor(status)}>
                                         <div className="flex items-center gap-1">
@@ -779,22 +794,21 @@ export default function ReverseProxyTargets(props: {
                                             {getStatusText(status)}
                                         </div>
                                     </Badge>
-                                    <Button
-                                        variant="text"
-                                        size="sm"
-                                        onClick={() =>
-                                            openHealthCheckDialog(row.original)
-                                        }
-                                        className="h-6 w-6 p-0"
-                                    >
                                         <Settings className="h-4 w-4" />
-                                    </Button>
                                 </div>
                             </Button>
                         ) : (
-                            <Badge variant="secondary">
-                                {t("healthCheckNotAvailable")}
-                            </Badge>
+                            <Button
+                                variant="outline"
+                                disabled={true}
+                                className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer"
+                            >
+                                <div className="flex items-center space-x-1">
+                                    <Badge variant="secondary">
+                                        {t("healthCheckNotAvailable")}
+                                    </Badge>
+                                </div>
+                            </Button>
                         )}
                     </>
                 );
@@ -865,7 +879,10 @@ export default function ReverseProxyTargets(props: {
                     (site) => site.siteId === row.original.siteId
                 );
 
-                const handleContainerSelectForTarget = (hostname: string, port?: number) => {
+                const handleContainerSelectForTarget = (
+                    hostname: string,
+                    port?: number
+                ) => {
                     updateTarget(row.original.targetId, {
                         ...row.original,
                         ip: hostname
@@ -880,7 +897,10 @@ export default function ReverseProxyTargets(props: {
 
                 return (
                     <div className="flex items-center gap-1">
-                        <Button variant={"outline"} className="w-full justify-start py-0  space-x-2 px-0 hover:bg-card cursor-default">
+                        <Button
+                            variant={"outline"}
+                            className="w-full justify-start py-0  space-x-2 px-0 hover:bg-card cursor-default"
+                        >
                             <Popover>
                                 <PopoverTrigger asChild>
                                     <Button
@@ -888,31 +908,46 @@ export default function ReverseProxyTargets(props: {
                                         role="combobox"
                                         className={cn(
                                             "min-w-[90px] justify-between text-sm font-medium border-r pr-4 rounded-none h-8 hover:bg-transparent",
-                                            !row.original.siteId && "text-muted-foreground"
+                                            !row.original.siteId &&
+                                                "text-muted-foreground"
                                         )}
                                     >
-                                        {row.original.siteId ? selectedSite?.name : t("siteSelect")}
+                                        {row.original.siteId
+                                            ? selectedSite?.name
+                                            : t("siteSelect")}
                                         <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
                                     </Button>
                                 </PopoverTrigger>
                                 <PopoverContent className="p-0 w-[180px]">
                                     <Command>
-                                        <CommandInput placeholder={t("siteSearch")} />
+                                        <CommandInput
+                                            placeholder={t("siteSearch")}
+                                        />
                                         <CommandList>
-                                            <CommandEmpty>{t("siteNotFound")}</CommandEmpty>
+                                            <CommandEmpty>
+                                                {t("siteNotFound")}
+                                            </CommandEmpty>
                                             <CommandGroup>
                                                 {sites.map((site) => (
                                                     <CommandItem
                                                         key={site.siteId}
                                                         value={`${site.siteId}:${site.name}`}
                                                         onSelect={() =>
-                                                            updateTarget(row.original.targetId, { siteId: site.siteId })
+                                                            updateTarget(
+                                                                row.original
+                                                                    .targetId,
+                                                                {
+                                                                    siteId: site.siteId
+                                                                }
+                                                            )
                                                         }
                                                     >
                                                         <CheckIcon
                                                             className={cn(
                                                                 "mr-2 h-4 w-4",
-                                                                site.siteId === row.original.siteId
+                                                                site.siteId ===
+                                                                    row.original
+                                                                        .siteId
                                                                     ? "opacity-100"
                                                                     : "opacity-0"
                                                             )}
@@ -926,34 +961,36 @@ export default function ReverseProxyTargets(props: {
                                 </PopoverContent>
                             </Popover>
                             {selectedSite &&
-                            selectedSite.type === "newt" &&
-                            (() => {
-                                const dockerState = getDockerStateForSite(
-                                    selectedSite.siteId
-                                );
-                                return (
-                                    <ContainersSelector
-                                        site={selectedSite}
-                                        containers={dockerState.containers}
-                                        isAvailable={dockerState.isAvailable}
-                                        onContainerSelect={
-                                            handleContainerSelectForTarget
-                                        }
-                                        onRefresh={() =>
-                                            refreshContainersForSite(
-                                                selectedSite.siteId
-                                            )
-                                        }
-                                    />
-                                );
-                            })()}
+                                selectedSite.type === "newt" &&
+                                (() => {
+                                    const dockerState = getDockerStateForSite(
+                                        selectedSite.siteId
+                                    );
+                                    return (
+                                        <ContainersSelector
+                                            site={selectedSite}
+                                            containers={dockerState.containers}
+                                            isAvailable={
+                                                dockerState.isAvailable
+                                            }
+                                            onContainerSelect={
+                                                handleContainerSelectForTarget
+                                            }
+                                            onRefresh={() =>
+                                                refreshContainersForSite(
+                                                    selectedSite.siteId
+                                                )
+                                            }
+                                        />
+                                    );
+                                })()}
 
                             <Select
                                 defaultValue={row.original.method ?? "http"}
                                 onValueChange={(value) =>
                                     updateTarget(row.original.targetId, {
                                         ...row.original,
-                                        method: value,
+                                        method: value
                                     })
                                 }
                             >
@@ -977,27 +1014,34 @@ export default function ReverseProxyTargets(props: {
                                 className="min-w-[130px] border-none placeholder-gray-400"
                                 onBlur={(e) => {
                                     const input = e.target.value.trim();
-                                    const hasProtocol = /^(https?|h2c):\/\//.test(input);
+                                    const hasProtocol =
+                                        /^(https?|h2c):\/\//.test(input);
                                     const hasPort = /:\d+(?:\/|$)/.test(input);
 
                                     if (hasProtocol || hasPort) {
                                         const parsed = parseHostTarget(input);
                                         if (parsed) {
-                                            updateTarget(row.original.targetId, {
-                                                ...row.original,
-                                                method: hasProtocol
-                                                    ? parsed.protocol
-                                                    : row.original.method,
-                                                ip: parsed.host,
-                                                port: hasPort
-                                                    ? parsed.port
-                                                    : row.original.port
-                                            });
+                                            updateTarget(
+                                                row.original.targetId,
+                                                {
+                                                    ...row.original,
+                                                    method: hasProtocol
+                                                        ? parsed.protocol
+                                                        : row.original.method,
+                                                    ip: parsed.host,
+                                                    port: hasPort
+                                                        ? parsed.port
+                                                        : row.original.port
+                                                }
+                                            );
                                         } else {
-                                            updateTarget(row.original.targetId, {
-                                                ...row.original,
-                                                ip: input
-                                            });
+                                            updateTarget(
+                                                row.original.targetId,
+                                                {
+                                                    ...row.original,
+                                                    ip: input
+                                                }
+                                            );
                                         }
                                     } else {
                                         updateTarget(row.original.targetId, {
@@ -1013,7 +1057,7 @@ export default function ReverseProxyTargets(props: {
                             <Input
                                 placeholder="Port"
                                 defaultValue={row.original.port}
-                                className="min-w-[60px] pl-0 border-none placeholder-gray-400"
+                                className="w-[120px] pl-0 border-none placeholder-gray-400"
                                 onBlur={(e) =>
                                     updateTarget(row.original.targetId, {
                                         ...row.original,
@@ -1184,21 +1228,21 @@ export default function ReverseProxyTargets(props: {
                                                                     className={cn(
                                                                         "justify-between flex-1",
                                                                         !field.value &&
-                                                                        "text-muted-foreground"
+                                                                            "text-muted-foreground"
                                                                     )}
                                                                 >
                                                                     {field.value
                                                                         ? sites.find(
-                                                                            (
-                                                                                site
-                                                                            ) =>
-                                                                                site.siteId ===
-                                                                                field.value
-                                                                        )
-                                                                            ?.name
+                                                                              (
+                                                                                  site
+                                                                              ) =>
+                                                                                  site.siteId ===
+                                                                                  field.value
+                                                                          )
+                                                                              ?.name
                                                                         : t(
-                                                                            "siteSelect"
-                                                                        )}
+                                                                              "siteSelect"
+                                                                          )}
                                                                     <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                                                 </Button>
                                                             </FormControl>
@@ -1264,34 +1308,34 @@ export default function ReverseProxyTargets(props: {
                                                                 );
                                                             return selectedSite &&
                                                                 selectedSite.type ===
-                                                                "newt"
+                                                                    "newt"
                                                                 ? (() => {
-                                                                    const dockerState =
-                                                                        getDockerStateForSite(
-                                                                            selectedSite.siteId
-                                                                        );
-                                                                    return (
-                                                                        <ContainersSelector
-                                                                            site={
-                                                                                selectedSite
-                                                                            }
-                                                                            containers={
-                                                                                dockerState.containers
-                                                                            }
-                                                                            isAvailable={
-                                                                                dockerState.isAvailable
-                                                                            }
-                                                                            onContainerSelect={
-                                                                                handleContainerSelect
-                                                                            }
-                                                                            onRefresh={() =>
-                                                                                refreshContainersForSite(
-                                                                                    selectedSite.siteId
-                                                                                )
-                                                                            }
-                                                                        />
-                                                                    );
-                                                                })()
+                                                                      const dockerState =
+                                                                          getDockerStateForSite(
+                                                                              selectedSite.siteId
+                                                                          );
+                                                                      return (
+                                                                          <ContainersSelector
+                                                                              site={
+                                                                                  selectedSite
+                                                                              }
+                                                                              containers={
+                                                                                  dockerState.containers
+                                                                              }
+                                                                              isAvailable={
+                                                                                  dockerState.isAvailable
+                                                                              }
+                                                                              onContainerSelect={
+                                                                                  handleContainerSelect
+                                                                              }
+                                                                              onRefresh={() =>
+                                                                                  refreshContainersForSite(
+                                                                                      selectedSite.siteId
+                                                                                  )
+                                                                              }
+                                                                          />
+                                                                      );
+                                                                  })()
                                                                 : null;
                                                         })()}
                                                 </div>
@@ -1519,12 +1563,12 @@ export default function ReverseProxyTargets(props: {
                                                                 {header.isPlaceholder
                                                                     ? null
                                                                     : flexRender(
-                                                                        header
-                                                                            .column
-                                                                            .columnDef
-                                                                            .header,
-                                                                        header.getContext()
-                                                                    )}
+                                                                          header
+                                                                              .column
+                                                                              .columnDef
+                                                                              .header,
+                                                                          header.getContext()
+                                                                      )}
                                                             </TableHead>
                                                         )
                                                     )}
