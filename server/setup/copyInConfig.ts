@@ -39,7 +39,7 @@ async function copyInDomains() {
                 domainId: key,
                 baseDomain: value.base_domain.toLowerCase(),
                 certResolver: value.cert_resolver || null,
-                preferWildcardCert: value.prefer_wildcard_cert || null
+                preferWildcardCert: value.prefer_wildcard_cert || null,
             })
         );
 

@@ -38,7 +38,7 @@ export type CreateDomainResponse = {
     aRecords?: { baseDomain: string; value: string }[];
     txtRecords?: { baseDomain: string; value: string }[];
     certResolver?: string | null;
-    preferWildcardCert?: boolean;
+    preferWildcardCert?: boolean | null;
 };
 
 // Helper to check if a domain is a subdomain or equal to another domain
