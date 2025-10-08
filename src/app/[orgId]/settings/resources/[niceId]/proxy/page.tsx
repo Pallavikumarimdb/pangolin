@@ -110,8 +110,6 @@ import {
 } from "@app/components/PathMatchRenameModal";
 import { Badge } from "@app/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
-import { TargetModal } from "@app/components/TargetModal";
-import { TargetDisplay } from "@app/components/TargetDisplay";
 
 const addTargetSchema = z
     .object({

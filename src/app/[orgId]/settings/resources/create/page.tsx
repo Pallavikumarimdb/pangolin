@@ -94,8 +94,6 @@ import { DomainRow } from "../../../../../components/DomainsTable";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
 import { PathMatchDisplay, PathMatchModal, PathRewriteDisplay, PathRewriteModal } from "@app/components/PathMatchRenameModal";
-import { TargetModal } from "@app/components/TargetModal";
-import { TargetDisplay } from "@app/components/TargetDisplay";
 import { Badge } from "@app/components/ui/badge";
 
 
