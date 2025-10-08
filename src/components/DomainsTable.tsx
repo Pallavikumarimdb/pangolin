@@ -25,7 +25,7 @@ export type DomainRow = {
     tries: number;
     configManaged: boolean;
     certResolver: string;
-    customCertResolver: string;
+    preferWildcardCert: boolean;
 };
 
 type Props = {
