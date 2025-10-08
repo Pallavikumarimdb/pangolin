@@ -108,7 +108,6 @@ export async function getTraefikConfig(
             // Certificate
             certificateStatus: certificates.status,
             domainCertResolver: domains.certResolver,
-            domainCustomCertResolver: domains.customCertResolver
         })
         .from(sites)
         .innerJoin(targets, eq(targets.siteId, sites.siteId))
@@ -213,7 +212,6 @@ export async function getTraefikConfig(
                 rewritePathType: row.rewritePathType,
                 priority: priority, // may be null, we fallback later
                 domainCertResolver: row.domainCertResolver,
-                domainCustomCertResolver: row.domainCustomCertResolver
             });
         }
 
@@ -311,29 +309,6 @@ export async function getTraefikConfig(
 
             if (!resource.subdomain) {
                 wildCard = resource.fullDomain;
-            }
-
-            const configDomain = config.getDomain(resource.domainId);
-            const rawTraefikCfg = config.getRawConfig().traefik || {};
-            const globalDefaultResolver = rawTraefikCfg.cert_resolver;
-
-
-            const domainCertResolver =
-                resource.domainCertResolver ?? configDomain?.cert_resolver;
-            const domainCustomResolver =
-                resource.domainCustomCertResolver;
-            const preferWildcardCert =
-                resource.preferWildcardCert ?? configDomain?.prefer_wildcard_cert ?? false;
-
-            let resolverName: string | undefined;
-
-            // Handle both letsencrypt & custom cases
-            if (domainCertResolver === "custom") {
-                resolverName = domainCustomResolver?.trim();
-            } else if (domainCertResolver) {
-                resolverName = domainCertResolver;
-            } else {
-                resolverName = globalDefaultResolver;
             }
 
             let tls = {};

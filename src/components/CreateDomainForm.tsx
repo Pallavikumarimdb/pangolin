@@ -11,6 +11,7 @@ import {
     FormDescription
 } from "@app/components/ui/form";
 import { Input } from "@app/components/ui/input";
+import { Checkbox, CheckboxWithLabel } from "@app/components/ui/checkbox";
 import { useToast } from "@app/hooks/useToast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useMemo } from "react";
@@ -98,8 +99,8 @@ const formSchema = z.object({
         .refine((val) => isValidDomainFormat(val), "Invalid domain format")
         .transform((val) => toPunycode(val)),
     type: z.enum(["ns", "cname", "wildcard"]),
-    certResolver: z.string().optional(),
-    customCertResolver: z.string().optional()
+    certResolver: z.string().nullable().optional(),
+    preferWildcardCert: z.boolean().optional()
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -112,7 +113,7 @@ type CreateDomainFormProps = {
 
 // Example cert resolver options (replace with real API/fetch if needed)
 const certResolverOptions = [
-    { id: "letsencrypt", title: "Let's Encrypt" },
+    { id: "default", title: "Default" },
     { id: "custom", title: "Custom Resolver" }
 ];
 
@@ -135,8 +136,8 @@ export default function CreateDomainForm({
         defaultValues: {
             baseDomain: "",
             type: build == "oss" || !env.flags.usePangolinDns ? "wildcard" : "ns",
-            certResolver: "",
-            customCertResolver: ""
+            certResolver: null,
+            preferWildcardCert: false
         }
     });
 
@@ -281,8 +282,20 @@ export default function CreateDomainForm({
                                                 <FormLabel>{t("certResolver")}</FormLabel>
                                                 <FormControl>
                                                     <Select
-                                                        value={field.value}
-                                                        onValueChange={(val) => field.onChange(val)}
+                                                        value={
+                                                            field.value === null ? "default" : 
+                                                            (field.value === "" || (field.value && field.value !== "default")) ? "custom" : 
+                                                            "default"
+                                                        }
+                                                        onValueChange={(val) => {
+                                                            if (val === "default") {
+                                                                field.onChange(null);
+                                                            } else if (val === "custom") {
+                                                                field.onChange("");
+                                                            } else {
+                                                                field.onChange(val);
+                                                            }
+                                                        }}
                                                     >
                                                         <SelectTrigger>
                                                             <SelectValue placeholder={t("selectCertResolver")} />
@@ -297,21 +310,40 @@ export default function CreateDomainForm({
                                                     </Select>
                                                 </FormControl>
                                                 <FormMessage />
-                                                {field.value === "custom" && (
-                                                    <FormControl className="mt-2">
-                                                        <Input
-                                                            placeholder={t("enterCustomResolver")}
-                                                            value={form.watch("customCertResolver") || ""}
-                                                            onChange={(e) =>
-                                                                form.setValue("customCertResolver", e.target.value)
-                                                            }
+                                                {field.value !== null && field.value !== "default" && (
+                                                    <div className="space-y-2 mt-2">
+                                                        <FormControl>
+                                                            <Input
+                                                                placeholder={t("enterCustomResolver")}
+                                                                value={field.value || ""}
+                                                                onChange={(e) => field.onChange(e.target.value)}
+                                                            />
+                                                        </FormControl>
+                                                        <FormField
+                                                            control={form.control}
+                                                            name="preferWildcardCert"
+                                                            render={({ field: checkboxField }) => (
+                                                                <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                                                                    <FormControl>
+                                                                        <CheckboxWithLabel
+                                                                            label={t("preferWildcardCert")}
+                                                                            checked={checkboxField.value}
+                                                                            onCheckedChange={checkboxField.onChange}
+                                                                        />
+                                                                    </FormControl>
+                                                                    {/* <div className="space-y-1 leading-none">
+                                                                        <FormLabel>
+                                                                            {t("preferWildcardCert")}
+                                                                        </FormLabel>
+                                                                    </div> */}
+                                                                </FormItem>
+                                                            )}
                                                         />
-                                                    </FormControl>
+                                                    </div>
                                                 )}
                                             </FormItem>
                                         )}
                                     />
-
                                 )}
                             </form>
                         </Form>

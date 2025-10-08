@@ -25,8 +25,8 @@ const bodySchema = z
     .object({
         type: z.enum(["ns", "cname", "wildcard"]),
         baseDomain: subdomainSchema,
-        certResolver: z.enum(["letsencrypt", "custom"]).optional(), // optional, only for wildcard
-        customCertResolver: z.string().optional() // required if certResolver === "custom"
+        certResolver: z.string().optional().nullable(),
+        preferWildcardCert: z.boolean().optional().nullable() // optional, only for wildcard
     })
     .strict();
 
@@ -38,7 +38,7 @@ export type CreateDomainResponse = {
     aRecords?: { baseDomain: string; value: string }[];
     txtRecords?: { baseDomain: string; value: string }[];
     certResolver?: string | null;
-    customCertResolver?: string | null;
+    preferWildcardCert?: boolean;
 };
 
 // Helper to check if a domain is a subdomain or equal to another domain
@@ -76,7 +76,7 @@ export async function createOrgDomain(
         }
 
         const { orgId } = parsedParams.data;
-        const { type, baseDomain, certResolver, customCertResolver } = parsedBody.data;
+        const { type, baseDomain, certResolver, preferWildcardCert } = parsedBody.data;
 
         if (build == "oss") {
             if (type !== "wildcard") {
@@ -261,7 +261,7 @@ export async function createOrgDomain(
                     type,
                     verified: type === "wildcard" ? true : false,
                     certResolver: certResolver || null,
-                    customCertResolver: customCertResolver || null
+                    preferWildcardCert: preferWildcardCert || false
                 })
                 .returning();
 
@@ -334,7 +334,7 @@ export async function createOrgDomain(
                 nsRecords,
                 aRecords,
                 certResolver: returned.certResolver,
-                customCertResolver: returned.customCertResolver
+                preferWildcardCert: returned.preferWildcardCert
             },
             success: true,
             error: false,

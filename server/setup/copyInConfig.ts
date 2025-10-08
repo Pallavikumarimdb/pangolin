@@ -37,7 +37,9 @@ async function copyInDomains() {
         const configDomains = Object.entries(rawDomains).map(
             ([key, value]) => ({
                 domainId: key,
-                baseDomain: value.base_domain.toLowerCase()
+                baseDomain: value.base_domain.toLowerCase(),
+                certResolver: value.cert_resolver || null,
+                preferWildcardCert: value.prefer_wildcard_cert || null
             })
         );
 
@@ -59,11 +61,11 @@ async function copyInDomains() {
             }
         }
 
-        for (const { domainId, baseDomain } of configDomains) {
+        for (const { domainId, baseDomain, certResolver, preferWildcardCert } of configDomains) {
             if (existingDomainKeys.has(domainId)) {
                 await trx
                     .update(domains)
-                    .set({ baseDomain, verified: true, type: "wildcard" })
+                    .set({ baseDomain, verified: true, type: "wildcard", certResolver, preferWildcardCert })
                     .where(eq(domains.domainId, domainId))
                     .execute();
             } else {
@@ -74,7 +76,9 @@ async function copyInDomains() {
                         baseDomain,
                         configManaged: true,
                         type: "wildcard",
-                        verified: true
+                        verified: true,
+                        certResolver,
+                        preferWildcardCert
                     })
                     .execute();
             }

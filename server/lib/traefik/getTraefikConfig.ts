@@ -77,8 +77,7 @@ export async function getTraefikConfig(
             subnet: sites.subnet,
             exitNodeId: sites.exitNodeId,
             // Domain cert resolver fields
-            domainCertResolver: domains.certResolver,
-            domainCustomCertResolver: domains.customCertResolver
+            domainCertResolver: domains.certResolver
         })
         .from(sites)
         .innerJoin(targets, eq(targets.siteId, sites.siteId))
@@ -173,8 +172,7 @@ export async function getTraefikConfig(
                 rewritePathType: row.rewritePathType,
                 priority: priority,
                 // Store domain cert resolver fields
-                domainCertResolver: row.domainCertResolver,
-                domainCustomCertResolver: row.domainCustomCertResolver
+                domainCertResolver: row.domainCertResolver
             });
         }
 
@@ -253,42 +251,47 @@ export async function getTraefikConfig(
                 wildCard = resource.fullDomain;
             }
 
-            const configDomain = config.getDomain(resource.domainId);
-            const rawTraefikCfg = config.getRawConfig().traefik || {};
-            const globalDefaultResolver = rawTraefikCfg.cert_resolver;
+            const globalDefaultResolver =
+                config.getRawConfig().traefik.cert_resolver;
+            const globalDefaultPreferWildcard =
+                config.getRawConfig().traefik.prefer_wildcard_cert;
 
-
-            const domainCertResolver =
-                resource.domainCertResolver ?? configDomain?.cert_resolver;
-            const domainCustomResolver =
-                resource.domainCustomCertResolver;
-            const preferWildcardCert =
-                resource.preferWildcardCert ?? configDomain?.prefer_wildcard_cert ?? false;
+            const domainCertResolver = resource.domainCertResolver;
+            const preferWildcardCert = resource.preferWildcardCert;
 
             let resolverName: string | undefined;
-
+            let preferWildcard: boolean | undefined;
             // Handle both letsencrypt & custom cases
-            if (domainCertResolver === "custom") {
-                resolverName = domainCustomResolver?.trim();
-            } else if (domainCertResolver) {
-                resolverName = domainCertResolver;
+            if (domainCertResolver) {
+                resolverName = domainCertResolver.trim();
             } else {
                 resolverName = globalDefaultResolver;
             }
 
-            const tls = {
-                certResolver: resolverName,
-                ...(preferWildcardCert
-                    ? {
-                          domains: [
-                              {
-                                  main: wildCard
-                              }
-                          ]
-                      }
-                    : {})
-            };
+            if (
+                preferWildcardCert !== undefined &&
+                preferWildcardCert !== null
+            ) {
+                preferWildcard = preferWildcardCert;
+            } else {
+                preferWildcard = globalDefaultPreferWildcard;
+            }
 
+            let tls = {};
+            if (build == "oss") {
+                tls = {
+                    certResolver: resolverName,
+                    ...(preferWildcard
+                        ? {
+                              domains: [
+                                  {
+                                      main: wildCard
+                                  }
+                              ]
+                          }
+                        : {})
+                };
+            }
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
