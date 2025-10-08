@@ -860,17 +860,14 @@ export default function ReverseProxyTargets(props: {
             }
         },
         {
-            accessorKey: "siteId",
-            header: t("site"),
+            accessorKey: "address",
+            header: t("address"),
             cell: ({ row }) => {
                 const selectedSite = sites.find(
                     (site) => site.siteId === row.original.siteId
                 );
 
-                const handleContainerSelectForTarget = (
-                    hostname: string,
-                    port?: number
-                ) => {
+                const handleContainerSelectForTarget = (hostname: string, port?: number) => {
                     updateTarget(row.original.targetId, {
                         ...row.original,
                         ip: hostname
@@ -884,67 +881,53 @@ export default function ReverseProxyTargets(props: {
                 };
 
                 return (
-                    <div className="flex gap-1 items-center">
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button
-                                    variant="outline"
-                                    role="combobox"
-                                    className={cn(
-                                        "justify-between flex-1",
-                                        !row.original.siteId &&
-                                        "text-muted-foreground"
-                                    )}
-                                >
-                                    {row.original.siteId
-                                        ? selectedSite?.name
-                                        : t("siteSelect")}
-                                    <CaretSortIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="p-0">
-                                <Command>
-                                    <CommandInput
-                                        placeholder={t("siteSearch")}
-                                    />
-                                    <CommandList>
-                                        <CommandEmpty>
-                                            {t("siteNotFound")}
-                                        </CommandEmpty>
-                                        <CommandGroup>
-                                            {sites.map((site) => (
-                                                <CommandItem
-                                                    value={`${site.siteId}:${site.name}:${site.niceId}`}
-                                                    key={site.siteId}
-                                                    onSelect={() => {
-                                                        updateTarget(
-                                                            row.original
-                                                                .targetId,
-                                                            {
-                                                                siteId: site.siteId
-                                                            }
-                                                        );
-                                                    }}
-                                                >
-                                                    <CheckIcon
-                                                        className={cn(
-                                                            "mr-2 h-4 w-4",
-                                                            site.siteId ===
-                                                                row.original
-                                                                    .siteId
-                                                                ? "opacity-100"
-                                                                : "opacity-0"
-                                                        )}
-                                                    />
-                                                    {site.name}
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup>
-                                    </CommandList>
-                                </Command>
-                            </PopoverContent>
-                        </Popover>
-                        {selectedSite &&
+                    <div className="flex items-center gap-1">
+                        <Button variant={"outline"} className="w-full justify-start py-0  space-x-2 px-0 hover:bg-card cursor-default">
+                            <Popover>
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        role="combobox"
+                                        className={cn(
+                                            "min-w-[90px] justify-between text-sm font-medium border-r pr-4 rounded-none h-8 hover:bg-transparent",
+                                            !row.original.siteId && "text-muted-foreground"
+                                        )}
+                                    >
+                                        {row.original.siteId ? selectedSite?.name : t("siteSelect")}
+                                        <CaretSortIcon className="ml-2h-4 w-4 shrink-0 opacity-50" />
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="p-0 w-[180px]">
+                                    <Command>
+                                        <CommandInput placeholder={t("siteSearch")} />
+                                        <CommandList>
+                                            <CommandEmpty>{t("siteNotFound")}</CommandEmpty>
+                                            <CommandGroup>
+                                                {sites.map((site) => (
+                                                    <CommandItem
+                                                        key={site.siteId}
+                                                        value={`${site.siteId}:${site.name}`}
+                                                        onSelect={() =>
+                                                            updateTarget(row.original.targetId, { siteId: site.siteId })
+                                                        }
+                                                    >
+                                                        <CheckIcon
+                                                            className={cn(
+                                                                "mr-2 h-4 w-4",
+                                                                site.siteId === row.original.siteId
+                                                                    ? "opacity-100"
+                                                                    : "opacity-0"
+                                                            )}
+                                                        />
+                                                        {site.name}
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup>
+                                        </CommandList>
+                                    </Command>
+                                </PopoverContent>
+                            </Popover>
+                            {selectedSite &&
                             selectedSite.type === "newt" &&
                             (() => {
                                 const dockerState = getDockerStateForSite(
@@ -966,70 +949,84 @@ export default function ReverseProxyTargets(props: {
                                     />
                                 );
                             })()}
-                    </div>
-                );
-            }
-        },
-        {
-            accessorKey: "target",
-            header: t("target"),
-            cell: ({ row }) => {
-                const hasTarget = !!(row.original.ip || row.original.port || row.original.method);
 
-                return hasTarget ? (
-                    <div className="flex items-center gap-1">
-                        <TargetModal
-                            value={{
-                                method: row.original.method,
-                                ip: row.original.ip,
-                                port: row.original.port
-                            }}
-                            onChange={(config) =>
-                                updateTarget(row.original.targetId, {
-                                    ...row.original,
-                                    ...config
-                                })
-                            }
-                            showMethod={resource.http}
-                            trigger={
-                                <Button
-                                    variant="outline"
-                                    className="flex items-center gap-2 max-w-md text-left cursor-pointer"
-                                >
-                                    <TargetDisplay
-                                        value={{
-                                            method: row.original.method,
-                                            ip: row.original.ip,
-                                            port: row.original.port
-                                        }}
-                                        showMethod={resource.http}
-                                    />
-                                </Button>
-                            }
-                        />
-                        <MoveRight className="mr-2 h-4 w-4" />
+                            <Select
+                                defaultValue={row.original.method ?? "http"}
+                                onValueChange={(value) =>
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        method: value,
+                                    })
+                                }
+                            >
+                                <SelectTrigger className="h-8 px-2 w-[70px] text-sm font-normal border-none bg-transparent shadow-none focus:ring-0 focus:outline-none focus-visible:ring-0 data-[state=open]:bg-transparent">
+                                    {row.original.method || "http"}
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="http">http</SelectItem>
+                                    <SelectItem value="https">https</SelectItem>
+                                    <SelectItem value="h2c">h2c</SelectItem>
+                                </SelectContent>
+                            </Select>
+
+                            <div className="flex items-center justify-center bg-gray-400 text-black px-1 h-9">
+                                {"://"}
+                            </div>
+
+                            <Input
+                                defaultValue={row.original.ip}
+                                placeholder="IP / Hostname"
+                                className="min-w-[130px] border-none placeholder-gray-400"
+                                onBlur={(e) => {
+                                    const input = e.target.value.trim();
+                                    const hasProtocol = /^(https?|h2c):\/\//.test(input);
+                                    const hasPort = /:\d+(?:\/|$)/.test(input);
+
+                                    if (hasProtocol || hasPort) {
+                                        const parsed = parseHostTarget(input);
+                                        if (parsed) {
+                                            updateTarget(row.original.targetId, {
+                                                ...row.original,
+                                                method: hasProtocol
+                                                    ? parsed.protocol
+                                                    : row.original.method,
+                                                ip: parsed.host,
+                                                port: hasPort
+                                                    ? parsed.port
+                                                    : row.original.port
+                                            });
+                                        } else {
+                                            updateTarget(row.original.targetId, {
+                                                ...row.original,
+                                                ip: input
+                                            });
+                                        }
+                                    } else {
+                                        updateTarget(row.original.targetId, {
+                                            ...row.original,
+                                            ip: input
+                                        });
+                                    }
+                                }}
+                            />
+                            <div className="flex items-center justify-center bg-gray-400 text-black px-1 h-9">
+                                {":"}
+                            </div>
+                            <Input
+                                type="number"
+                                placeholder="Port"
+                                defaultValue={row.original.port}
+                                className="min-w-[60px] pl-0 border-none placeholder-gray-400"
+                                onBlur={(e) =>
+                                    updateTarget(row.original.targetId, {
+                                        ...row.original,
+                                        port: parseInt(e.target.value, 10)
+                                    })
+                                }
+                            />
+                        </Button>
+                        <MoveRight className="ml-1 h-4 w-4" />
                     </div>
-                ) : (
-                    <TargetModal
-                        value={{
-                            method: row.original.method,
-                            ip: row.original.ip,
-                            port: row.original.port
-                        }}
-                        onChange={(config) =>
-                            updateTarget(row.original.targetId, {
-                                ...row.original,
-                                ...config
-                            })
-                        }
-                        showMethod={resource.http}
-                        trigger={
-                            <Button variant="outline">
-                                <Plus className="h-4 w-4 mr-2" />
-                                {t("configureTarget")}
-                            </Button>
-                        }
-                    />
                 );
             }
         },
