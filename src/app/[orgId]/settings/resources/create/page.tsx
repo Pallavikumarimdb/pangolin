@@ -58,7 +58,7 @@ import {
 } from "@app/components/ui/popover";
 import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons";
 import { cn } from "@app/lib/cn";
-import { ArrowRight, CircleCheck, CircleX, Info, MoveRight, Plus, SquareArrowOutUpRight } from "lucide-react";
+import { ArrowRight, CircleCheck, CircleX, Info, MoveRight, Plus, Settings, SquareArrowOutUpRight } from "lucide-react";
 import CopyTextBox from "@app/components/CopyTextBox";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
@@ -95,6 +95,8 @@ import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@app/components/ui/tooltip";
 import { PathMatchDisplay, PathMatchModal, PathRewriteDisplay, PathRewriteModal } from "@app/components/PathMatchRenameModal";
 import { Badge } from "@app/components/ui/badge";
+import HealthCheckDialog from "@app/components/HealthCheckDialog";
+import { SwitchInput } from "@app/components/SwitchInput";
 
 
 const baseResourceFormSchema = z.object({
@@ -112,6 +114,11 @@ const tcpUdpResourceFormSchema = z.object({
     proxyPort: z.number().int().min(1).max(65535)
     // enableProxy: z.boolean().default(false)
 });
+
+const targetsSettingsSchema = z.object({
+    stickySession: z.boolean()
+});
+
 
 const addTargetSchema = z.object({
     ip: z.string().refine(isTargetValid),
@@ -216,6 +223,10 @@ export default function Page() {
     const [targetsToRemove, setTargetsToRemove] = useState<number[]>([]);
     const [dockerStates, setDockerStates] = useState<Map<number, DockerState>>(new Map());
 
+    const [selectedTargetForHealthCheck, setSelectedTargetForHealthCheck] =
+        useState<LocalTarget | null>(null);
+    const [healthCheckDialogOpen, setHealthCheckDialogOpen] = useState(false);
+
     const resourceTypes: ReadonlyArray<ResourceTypeOption> = [
         {
             id: "http",
@@ -267,6 +278,13 @@ export default function Page() {
             rewritePathType: null,
             priority: 100,
         } as z.infer<typeof addTargetSchema>
+    });
+
+    const targetsSettingsForm = useForm({
+        resolver: zodResolver(targetsSettingsSchema),
+        defaultValues: {
+            stickySession: false
+        }
     });
 
     const watchedIp = addTargetForm.watch("ip");
@@ -406,11 +424,13 @@ export default function Page() {
 
         const baseData = baseForm.getValues();
         const isHttp = baseData.http;
+        const stickySessionData = targetsSettingsForm.getValues()
 
         try {
             const payload = {
                 name: baseData.name,
-                http: baseData.http
+                http: baseData.http,
+                stickySession: stickySessionData.stickySession
             };
 
             let sanitizedSubdomain: string | undefined;
@@ -604,6 +624,26 @@ export default function Page() {
         load();
     }, []);
 
+    function TargetHealthCheck(targetId: number, config: any) {
+        setTargets(
+            targets.map((target) =>
+                target.targetId === targetId
+                    ? {
+                        ...target,
+                        ...config,
+                        updated: true
+                    }
+                    : target
+            )
+        );
+    }
+
+    const openHealthCheckDialog = (target: LocalTarget) => {
+        console.log(target);
+        setSelectedTargetForHealthCheck(target);
+        setHealthCheckDialogOpen(true);
+    };
+
     const columns: ColumnDef<LocalTarget>[] = [
         {
             accessorKey: "enabled",
@@ -661,6 +701,82 @@ export default function Page() {
             }
         },
         {
+            accessorKey: "healthCheck",
+            header: t("healthCheck"),
+            cell: ({ row }) => {
+                const status = row.original.hcHealth || "unknown";
+                const isEnabled = row.original.hcEnabled;
+
+                const getStatusColor = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return "green";
+                        case "unhealthy":
+                            return "red";
+                        case "unknown":
+                        default:
+                            return "secondary";
+                    }
+                };
+
+                const getStatusText = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return t("healthCheckHealthy");
+                        case "unhealthy":
+                            return t("healthCheckUnhealthy");
+                        case "unknown":
+                        default:
+                            return t("healthCheckUnknown");
+                    }
+                };
+
+                const getStatusIcon = (status: string) => {
+                    switch (status) {
+                        case "healthy":
+                            return <CircleCheck className="w-3 h-3" />;
+                        case "unhealthy":
+                            return <CircleX className="w-3 h-3" />;
+                        case "unknown":
+                        default:
+                            return null;
+                    }
+                };
+
+                return (
+                    <>
+                        {row.original.siteType === "newt" ? (
+                            <Button variant="outline"
+                                className="flex items-center gap-2 p-2 max-w-md w-full text-left cursor-pointer">
+                                <div className="flex items-center space-x-1">
+                                    <Badge variant={getStatusColor(status)}>
+                                        <div className="flex items-center gap-1">
+                                            {getStatusIcon(status)}
+                                            {getStatusText(status)}
+                                        </div>
+                                    </Badge>
+                                    <Button
+                                        variant="text"
+                                        size="sm"
+                                        onClick={() =>
+                                            openHealthCheckDialog(row.original)
+                                        }
+                                        className="h-6 w-6 p-0"
+                                    >
+                                        <Settings className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </Button>
+                        ) : (
+                            <Badge variant="secondary">
+                                {t("healthCheckNotAvailable")}
+                            </Badge>
+                        )}
+                    </>
+                );
+            }
+        },
+        {
             accessorKey: "path",
             header: t("matchPath"),
             cell: ({ row }) => {
@@ -695,9 +811,9 @@ export default function Page() {
                         <PathMatchModal
                             value={{
                                 path: row.original.path,
-                            pathMatchType: row.original.pathMatchType,
+                                pathMatchType: row.original.pathMatchType,
                             }}
-                        onChange={(config) => updateTarget(row.original.targetId, config)}
+                            onChange={(config) => updateTarget(row.original.targetId, config)}
                             trigger={
                                 <Button variant="outline">
                                     <Plus className="h-4 w-4 mr-2" />
@@ -1543,6 +1659,49 @@ export default function Page() {
                                             <h6 className="font-semibold">
                                                 {t("targetsList")}
                                             </h6>
+                                            <SettingsSectionForm>
+                                                <Form {...targetsSettingsForm}>
+                                                    <form
+                                                        onSubmit={addTargetForm.handleSubmit(
+                                                            addTarget
+                                                        )}
+                                                        className="space-y-4"
+                                                        id="targets-settings-form"
+                                                    >
+                                                        <FormField
+                                                            control={
+                                                                targetsSettingsForm.control
+                                                            }
+                                                            name="stickySession"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormControl>
+                                                                        <SwitchInput
+                                                                            id="sticky-toggle"
+                                                                            label={t(
+                                                                                "targetStickySessions"
+                                                                            )}
+                                                                            description={t(
+                                                                                "targetStickySessionsDescription"
+                                                                            )}
+                                                                            defaultChecked={
+                                                                                field.value
+                                                                            }
+                                                                            onCheckedChange={(
+                                                                                val
+                                                                            ) => {
+                                                                                field.onChange(
+                                                                                    val
+                                                                                );
+                                                                            }}
+                                                                        />
+                                                                    </FormControl>
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </form>
+                                                </Form>
+                                            </SettingsSectionForm>
                                             <div className="">
                                                 <Table>
                                                     <TableHeader>
@@ -1679,6 +1838,55 @@ export default function Page() {
                                     {t("resourceCreate")}
                                 </Button>
                             </div>
+                            {selectedTargetForHealthCheck && (
+                                <HealthCheckDialog
+                                    open={healthCheckDialogOpen}
+                                    setOpen={setHealthCheckDialogOpen}
+                                    targetId={selectedTargetForHealthCheck.targetId}
+                                    targetAddress={`${selectedTargetForHealthCheck.ip}:${selectedTargetForHealthCheck.port}`}
+                                    targetMethod={
+                                        selectedTargetForHealthCheck.method || undefined
+                                    }
+                                    initialConfig={{
+                                        hcEnabled:
+                                            selectedTargetForHealthCheck.hcEnabled || false,
+                                        hcPath: selectedTargetForHealthCheck.hcPath || "/",
+                                        hcMethod:
+                                            selectedTargetForHealthCheck.hcMethod || "GET",
+                                        hcInterval:
+                                            selectedTargetForHealthCheck.hcInterval || 5,
+                                        hcTimeout: selectedTargetForHealthCheck.hcTimeout || 5,
+                                        hcHeaders:
+                                            selectedTargetForHealthCheck.hcHeaders || undefined,
+                                        hcScheme:
+                                            selectedTargetForHealthCheck.hcScheme || undefined,
+                                        hcHostname:
+                                            selectedTargetForHealthCheck.hcHostname ||
+                                            selectedTargetForHealthCheck.ip,
+                                        hcPort:
+                                            selectedTargetForHealthCheck.hcPort ||
+                                            selectedTargetForHealthCheck.port,
+                                        hcFollowRedirects:
+                                            selectedTargetForHealthCheck.hcFollowRedirects ||
+                                            true,
+                                        hcStatus:
+                                            selectedTargetForHealthCheck.hcStatus || undefined,
+                                        hcMode: selectedTargetForHealthCheck.hcMode || "http",
+                                        hcUnhealthyInterval:
+                                            selectedTargetForHealthCheck.hcUnhealthyInterval ||
+                                            30
+                                    }}
+                                    onChanges={async (config) => {
+                                        if (selectedTargetForHealthCheck) {
+                                            console.log(config);
+                                            TargetHealthCheck(
+                                                selectedTargetForHealthCheck.targetId,
+                                                config
+                                            );
+                                        }
+                                    }}
+                                />
+                            )}
                         </SettingsContainer>
                     ) : (
                         <SettingsContainer>
