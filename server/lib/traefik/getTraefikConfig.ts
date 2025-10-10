@@ -126,7 +126,7 @@ export async function getTraefikConfig(
 
             resourcesMap.set(key, {
                 resourceId: row.resourceId,
-                name: resourceName, 
+                name: resourceName,
                 fullDomain: row.fullDomain,
                 ssl: row.ssl,
                 http: row.http,
@@ -297,8 +297,6 @@ export async function getTraefikConfig(
                         // Single middleware
                         routerMiddlewares.push(rewriteMiddlewareName);
                     }
-
-                    logger.debug(`Created path rewrite middleware ${rewriteMiddlewareName}: ${resource.pathMatchType}(${resource.path}) -> ${resource.rewritePathType}(${resource.rewritePath})`);
                 } catch (error) {
                     logger.error(`Failed to create path rewrite middleware for resource ${resource.resourceId}: ${error}`);
                 }

@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { Settings } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -256,7 +256,7 @@ export function PathMatchDisplay({
       <code className="text-sm flex-1 truncate" title={value.path}>
         {value.path}
       </code>
-      <Pencil className="h-3 w-3 shrink-0 opacity-70" />
+      <Settings className="h-4 w-4" />
     </div>
   );
 }
@@ -287,7 +287,7 @@ export function PathRewriteDisplay({
       <code className="text-sm flex-1 truncate" title={value.rewritePath || ""}>
         {value.rewritePath || <span className="text-muted-foreground italic">(strip)</span>}
       </code>
-      <Pencil className="h-3 w-3 shrink-0 opacity-70" />
+      <Settings className="h-4 w-4" />
     </div>
   );
 }
