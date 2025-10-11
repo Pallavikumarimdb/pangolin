@@ -6,20 +6,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@app/components/ui/dialog";
+
 import { Badge } from "@app/components/ui/badge";
 import { Label } from "@app/components/ui/label";
 import { useEffect, useState } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { Credenza, CredenzaContent, CredenzaDescription, CredenzaFooter, CredenzaHeader, CredenzaTitle, CredenzaTrigger } from "./Credenza";
 
 
 export function PathMatchModal({
@@ -68,15 +61,15 @@ export function PathMatchModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Configure Path Matching</DialogTitle>
-          <DialogDescription>
+    <Credenza open={open} onOpenChange={setOpen}>
+      <CredenzaTrigger asChild>{trigger}</CredenzaTrigger>
+      <CredenzaContent className="sm:max-w-[500px]">
+        <CredenzaHeader>
+          <CredenzaTitle>Configure Path Matching</CredenzaTitle>
+          <CredenzaDescription>
             Set up how incoming requests should be matched based on their path.
-          </DialogDescription>
-        </DialogHeader>
+          </CredenzaDescription>
+        </CredenzaHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="match-type">Match Type</Label>
@@ -102,7 +95,7 @@ export function PathMatchModal({
             <p className="text-sm text-muted-foreground">{getHelpText()}</p>
           </div>
         </div>
-        <DialogFooter className="gap-2">
+        <CredenzaFooter className="gap-2">
           {value?.path && (
             <Button variant="outline" onClick={handleClear}>
               Clear
@@ -111,9 +104,9 @@ export function PathMatchModal({
           <Button onClick={handleSave} disabled={!path.trim()}>
             Save Changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </CredenzaFooter>
+      </CredenzaContent>
+    </Credenza>
   );
 }
 
@@ -177,17 +170,17 @@ export function PathRewriteModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild disabled={disabled}>
+    <Credenza open={open} onOpenChange={(v) => !disabled && setOpen(v)}>
+      <CredenzaTrigger asChild>
         {trigger}
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>Configure Path Rewriting</DialogTitle>
-          <DialogDescription>
+      </CredenzaTrigger>
+      <CredenzaContent className="sm:max-w-[500px]">
+        <CredenzaHeader>
+          <CredenzaTitle>Configure Path Rewriting</CredenzaTitle>
+          <CredenzaDescription>
             Transform the matched path before forwarding to the target.
-          </DialogDescription>
-        </DialogHeader>
+          </CredenzaDescription>
+        </CredenzaHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
             <Label htmlFor="rewrite-type">Rewrite Type</Label>
@@ -214,7 +207,7 @@ export function PathRewriteModal({
             <p className="text-sm text-muted-foreground">{getHelpText()}</p>
           </div>
         </div>
-        <DialogFooter className="gap-2">
+        <CredenzaFooter className="gap-2">
           {value?.rewritePath && (
             <Button variant="outline" onClick={handleClear}>
               Clear
@@ -226,9 +219,9 @@ export function PathRewriteModal({
           >
             Save Changes
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </CredenzaFooter>
+      </CredenzaContent>
+    </Credenza>
   );
 }
 
