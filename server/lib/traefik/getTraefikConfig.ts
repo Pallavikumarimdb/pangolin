@@ -260,11 +260,7 @@ export async function getTraefikConfig(
             const domainCertResolver = resource.domainCertResolver;
             const preferWildcardCert = resource.preferWildcardCert;
 
-
-            let tls = {};
-            if (!privateConfig.getRawPrivateConfig().flags.generate_own_certificates) {
-
-                let resolverName: string | undefined;
+             let resolverName: string | undefined;
                 let preferWildcard: boolean | undefined;
                 // Handle both letsencrypt & custom cases
                 if (domainCertResolver) {
@@ -282,8 +278,7 @@ export async function getTraefikConfig(
                     preferWildcard = globalDefaultPreferWildcard;
                 }
 
-
-                tls = {
+                const tls = {
                     certResolver: resolverName,
                     ...(preferWildcard
                         ? {
@@ -295,7 +290,7 @@ export async function getTraefikConfig(
                         }
                         : {})
                 };
-            }
+            
 
             const additionalMiddlewares =
                 config.getRawConfig().traefik.additional_middlewares || [];
