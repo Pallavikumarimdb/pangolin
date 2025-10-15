@@ -15,6 +15,7 @@ import config from "@server/lib/config";
 import { resources, sites, Target, targets } from "@server/db";
 import createPathRewriteMiddleware from "./middleware";
 import { sanitize, validatePathRewriteConfig } from "./utils";
+import { privateConfig } from "../../private/lib/config";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
@@ -259,36 +260,39 @@ export async function getTraefikConfig(
             const domainCertResolver = resource.domainCertResolver;
             const preferWildcardCert = resource.preferWildcardCert;
 
-            let resolverName: string | undefined;
-            let preferWildcard: boolean | undefined;
-            // Handle both letsencrypt & custom cases
-            if (domainCertResolver) {
-                resolverName = domainCertResolver.trim();
-            } else {
-                resolverName = globalDefaultResolver;
-            }
-
-            if (
-                preferWildcardCert !== undefined &&
-                preferWildcardCert !== null
-            ) {
-                preferWildcard = preferWildcardCert;
-            } else {
-                preferWildcard = globalDefaultPreferWildcard;
-            }
 
             let tls = {};
-            if (build == "oss") {
+            if (!privateConfig.getRawPrivateConfig().flags.generate_own_certificates) {
+
+                let resolverName: string | undefined;
+                let preferWildcard: boolean | undefined;
+                // Handle both letsencrypt & custom cases
+                if (domainCertResolver) {
+                    resolverName = domainCertResolver.trim();
+                } else {
+                    resolverName = globalDefaultResolver;
+                }
+
+                if (
+                    preferWildcardCert !== undefined &&
+                    preferWildcardCert !== null
+                ) {
+                    preferWildcard = preferWildcardCert;
+                } else {
+                    preferWildcard = globalDefaultPreferWildcard;
+                }
+
+
                 tls = {
                     certResolver: resolverName,
                     ...(preferWildcard
                         ? {
-                              domains: [
-                                  {
-                                      main: wildCard
-                                  }
-                              ]
-                          }
+                            domains: [
+                                {
+                                    main: wildCard
+                                }
+                            ]
+                        }
                         : {})
                 };
             }
@@ -530,14 +534,14 @@ export async function getTraefikConfig(
                     })(),
                     ...(resource.stickySession
                         ? {
-                              sticky: {
-                                  cookie: {
-                                      name: "p_sticky", // TODO: make this configurable via config.yml like other cookies
-                                      secure: resource.ssl,
-                                      httpOnly: true
-                                  }
-                              }
-                          }
+                            sticky: {
+                                cookie: {
+                                    name: "p_sticky", // TODO: make this configurable via config.yml like other cookies
+                                    secure: resource.ssl,
+                                    httpOnly: true
+                                }
+                            }
+                        }
                         : {})
                 }
             };
@@ -638,13 +642,13 @@ export async function getTraefikConfig(
                     })(),
                     ...(resource.stickySession
                         ? {
-                              sticky: {
-                                  ipStrategy: {
-                                      depth: 0,
-                                      sourcePort: true
-                                  }
-                              }
-                          }
+                            sticky: {
+                                ipStrategy: {
+                                    depth: 0,
+                                    sourcePort: true
+                                }
+                            }
+                        }
                         : {})
                 }
             };
