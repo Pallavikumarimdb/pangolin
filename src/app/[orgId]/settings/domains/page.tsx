@@ -60,7 +60,7 @@ export default async function DomainsPage(props: Props) {
                     title={t("domains")}
                     description={t("domainsDescription")}
                 />
-                <DomainsTable domains={domains} />
+                <DomainsTable domains={domains} orgId={org.org.orgId} />
             </OrgProvider>
         </>
     );
