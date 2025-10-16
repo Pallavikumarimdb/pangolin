@@ -303,6 +303,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/domain/:domainId",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getDomain),
+    domain.getDomain
+);
+
+authenticated.get(
     "/org/:orgId/invitations",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listInvitations),

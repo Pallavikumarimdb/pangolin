@@ -1899,5 +1899,8 @@
     "certResolverDescription": "Select the certificate resolver to use for this resource.",
     "selectCertResolver": "Select Certificate Resolver",
     "enterCustomResolver": "Enter Custom Resolver",
-    "preferWildcardCert": "Prefer Wildcard Certificate"
+    "preferWildcardCert": "Prefer Wildcard Certificate",
+    "unverified": "Unverified",
+    "domainSetting": "DomainSetting",
+    "domainSettingDescription": "Configure settings for your domain"
 }
