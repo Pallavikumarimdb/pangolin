@@ -1901,6 +1901,7 @@
     "enterCustomResolver": "Enter Custom Resolver",
     "preferWildcardCert": "Prefer Wildcard Certificate",
     "unverified": "Unverified",
-    "domainSetting": "DomainSetting",
-    "domainSettingDescription": "Configure settings for your domain"
+    "domainSetting": "Domain Settings",
+    "domainSettingDescription": "Configure settings for your domain",
+    "preferWildcardCertDescription": "Attempt to generate a wildcard certificate (require a properly configured certificate resolver)."
 }
