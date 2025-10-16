@@ -15,7 +15,6 @@ import config from "@server/lib/config";
 import { resources, sites, Target, targets } from "@server/db";
 import createPathRewriteMiddleware from "./middleware";
 import { sanitize, validatePathRewriteConfig } from "./utils";
-import { privateConfig } from "../../private/lib/config";
 
 const redirectHttpsMiddlewareName = "redirect-to-https";
 const badgerMiddlewareName = "badger";
