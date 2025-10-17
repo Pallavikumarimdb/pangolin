@@ -1903,5 +1903,8 @@
     "unverified": "Unverified",
     "domainSetting": "Domain Settings",
     "domainSettingDescription": "Configure settings for your domain",
-    "preferWildcardCertDescription": "Attempt to generate a wildcard certificate (require a properly configured certificate resolver)."
+    "preferWildcardCertDescription": "Attempt to generate a wildcard certificate (require a properly configured certificate resolver).",
+    "recordName": "Record Name",
+    "auto": "Auto",
+    "TTL": "TTL"
 }

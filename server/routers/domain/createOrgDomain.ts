@@ -290,7 +290,8 @@ export async function createOrgDomain(
                         domainId,
                         recordType: "NS",
                         baseDomain: baseDomain,
-                        value: nsValue
+                        value: nsValue,
+                        verified: false
                     });
                 }
             } else if (type === "cname") {
@@ -312,7 +313,8 @@ export async function createOrgDomain(
                         domainId,
                         recordType: "CNAME",
                         baseDomain: cnameRecord.baseDomain,
-                        value: cnameRecord.value
+                        value: cnameRecord.value,
+                        verified: false
                     });
                 }
             } else if (type === "wildcard") {
@@ -334,7 +336,8 @@ export async function createOrgDomain(
                         domainId,
                         recordType: "A",
                         baseDomain: aRecord.baseDomain,
-                        value: aRecord.value
+                        value: aRecord.value,
+                        verified: true
                     });
                 }
             }

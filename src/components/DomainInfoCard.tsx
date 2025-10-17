@@ -1,7 +1,6 @@
 "use client";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
 import {
     InfoSection,
     InfoSectionContent,
@@ -24,15 +23,23 @@ import {
 } from "@app/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Input } from "./ui/input";
-import { CheckboxWithLabel } from "./ui/checkbox";
 import { useForm } from "react-hook-form";
 import z from "zod";
 import { toASCII } from "punycode";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { build } from "@server/build";
 import { Switch } from "./ui/switch";
+import DNSRecordsTable, { DNSRecordRow } from "./DNSrecordTable";
+import { useEffect, useState } from "react";
+import { createApiClient } from "@app/lib/api";
+import { useToast } from "@app/hooks/useToast";
+import { formatAxiosError } from "@app/lib/api";
+import { Badge } from "./ui/badge";
 
-type DomainInfoCardProps = {};
+type DomainInfoCardProps = {
+    orgId?: string;
+    domainId?: string;
+};
 
 // Helper functions for Unicode domain handling
 function toPunycode(domain: string): string {
@@ -88,10 +95,16 @@ const certResolverOptions = [
 ];
 
 
-export default function DomainInfoCard({ }: DomainInfoCardProps) {
+export default function DomainInfoCard({ orgId, domainId }: DomainInfoCardProps) {
     const { domain, updateDomain } = useDomainContext();
     const t = useTranslations();
     const { env } = useEnvContext();
+    const api = createApiClient(useEnvContext());
+    const { toast } = useToast();
+
+    const [dnsRecords, setDnsRecords] = useState<DNSRecordRow[]>([]);
+    const [loadingRecords, setLoadingRecords] = useState(true);
+    const [isRefreshing, setIsRefreshing] = useState(false);
 
     const form = useForm<FormValues>({
         resolver: zodResolver(formSchema),
@@ -102,6 +115,40 @@ export default function DomainInfoCard({ }: DomainInfoCardProps) {
             preferWildcardCert: false
         }
     });
+
+    const fetchDNSRecords = async (showRefreshing = false) => {
+        if (showRefreshing) {
+            setIsRefreshing(true);
+        } else {
+            setLoadingRecords(true);
+        }
+
+        try {
+            const response = await api.get<{ data: DNSRecordRow[] }>(
+                `/org/${orgId}/domain/${domainId}/dns-records`
+            );
+            setDnsRecords(response.data.data);
+        } catch (error) {
+            // Only show error if records exist (not a 404)
+            const err = error as any;
+            if (err?.response?.status !== 404) {
+                toast({
+                    title: t("error"),
+                    description: formatAxiosError(error),
+                    variant: "destructive"
+                });
+            }
+        } finally {
+            setLoadingRecords(false);
+            setIsRefreshing(false);
+        }
+    };
+
+    useEffect(() => {
+        if (domain.domainId) {
+            fetchDNSRecords();
+        }
+    }, [domain.domainId]);
 
 
     return (
@@ -126,8 +173,9 @@ export default function DomainInfoCard({ }: DomainInfoCardProps) {
                             <InfoSectionContent>
                                 {domain.verified ? (
                                     <div className="text-green-500 flex items-center space-x-2">
-                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                        <span>{t("verified")}</span>
+                                        <Badge variant="green">
+                                            {t("verified")}
+                                        </Badge>
                                     </div>
                                 ) : (
                                     <div className="text-neutral-500 flex items-center space-x-2">
@@ -141,12 +189,20 @@ export default function DomainInfoCard({ }: DomainInfoCardProps) {
                 </AlertDescription>
             </Alert>
 
+            {loadingRecords ? (
+                <div className="space-y-4">
+                    loading...
+                </div>
+            ) : (
+                <DNSRecordsTable
+                    domainId={domain.domainId}
+                    records={dnsRecords}
+                    isRefreshing={isRefreshing}
+                />
+            )}
 
-            
-
-
-             {/* Domain Settings */}
-             {/* Add condition later to only show when domain is wildcard */}
+            {/* Domain Settings */}
+            {/* Add condition later to only show when domain is wildcard */}
             <SettingsContainer>
                 <SettingsSection>
                     <SettingsSectionHeader>

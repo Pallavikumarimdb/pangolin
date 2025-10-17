@@ -42,7 +42,7 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
 
             <DomainProvider domain={domain}>
                 <div className="space-y-6">
-                    <DomainInfoCard />
+                    <DomainInfoCard orgId={params.orgId} domainId={params.domainId} />
                 </div>
             </DomainProvider>
         </>
