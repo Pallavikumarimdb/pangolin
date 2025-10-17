@@ -310,6 +310,13 @@ authenticated.get(
 );
 
 authenticated.get(
+    "/org/:orgId/domain/:domainId/dns-records",
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.getDNSRecords),
+    domain.getDNSRecords
+);
+
+authenticated.get(
     "/org/:orgId/invitations",
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.listInvitations),

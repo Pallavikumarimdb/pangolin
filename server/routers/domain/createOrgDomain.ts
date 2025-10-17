@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { db, Domain, domains, OrgDomains, orgDomains } from "@server/db";
+import { db, Domain, domains, OrgDomains, orgDomains, dnsRecords } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
 import createHttpError from "http-errors";
@@ -276,9 +276,23 @@ export async function createOrgDomain(
                 })
                 .returning();
 
+            // Prepare DNS records to insert
+            const recordsToInsert = [];
+
             // TODO: This needs to be cross region and not hardcoded
             if (type === "ns") {
                 nsRecords = config.getRawConfig().dns.nameservers as string[];
+                
+                // Save NS records to database
+                for (const nsValue of nsRecords) {
+                    recordsToInsert.push({
+                        id: generateId(15),
+                        domainId,
+                        recordType: "NS",
+                        baseDomain: baseDomain,
+                        value: nsValue
+                    });
+                }
             } else if (type === "cname") {
                 cnameRecords = [
                     {
@@ -290,6 +304,17 @@ export async function createOrgDomain(
                         baseDomain: `_acme-challenge.${baseDomain}`
                     }
                 ];
+                
+                // Save CNAME records to database
+                for (const cnameRecord of cnameRecords) {
+                    recordsToInsert.push({
+                        id: generateId(15),
+                        domainId,
+                        recordType: "CNAME",
+                        baseDomain: cnameRecord.baseDomain,
+                        value: cnameRecord.value
+                    });
+                }
             } else if (type === "wildcard") {
                 aRecords = [
                     {
@@ -301,6 +326,22 @@ export async function createOrgDomain(
                         baseDomain: `${baseDomain}`
                     }
                 ];
+                
+                // Save A records to database
+                for (const aRecord of aRecords) {
+                    recordsToInsert.push({
+                        id: generateId(15),
+                        domainId,
+                        recordType: "A",
+                        baseDomain: aRecord.baseDomain,
+                        value: aRecord.value
+                    });
+                }
+            }
+
+            // Insert all DNS records in batch
+            if (recordsToInsert.length > 0) {
+                await trx.insert(dnsRecords).values(recordsToInsert);
             }
 
             numOrgDomains = await trx

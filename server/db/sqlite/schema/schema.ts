@@ -16,6 +16,18 @@ export const domains = sqliteTable("domains", {
     preferWildcardCert: integer("preferWildcardCert", { mode: "boolean" })
 });
 
+export const dnsRecords = sqliteTable("dnsRecords", {
+    id: text("id").primaryKey(),
+    domainId: text("domainId")
+        .notNull()
+        .references(() => domains.domainId, { onDelete: "cascade" }),
+
+    recordType: text("recordType").notNull(), // "NS" | "CNAME" | "A" | "TXT"
+    baseDomain: text("baseDomain"),
+    value: text("value").notNull(), 
+});
+
+
 export const orgs = sqliteTable("orgs", {
     orgId: text("orgId").primaryKey(),
     name: text("name").notNull(),
@@ -748,6 +760,7 @@ export type ResourceWhitelist = InferSelectModel<typeof resourceWhitelist>;
 export type VersionMigration = InferSelectModel<typeof versionMigrations>;
 export type ResourceRule = InferSelectModel<typeof resourceRules>;
 export type Domain = InferSelectModel<typeof domains>;
+export type DnsRecord = InferSelectModel<typeof dnsRecords>;
 export type Client = InferSelectModel<typeof clients>;
 export type ClientSite = InferSelectModel<typeof clientSites>;
 export type RoleClient = InferSelectModel<typeof roleClients>;
