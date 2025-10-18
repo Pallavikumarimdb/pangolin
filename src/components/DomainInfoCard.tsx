@@ -155,7 +155,7 @@ export default function DomainInfoCard({ orgId, domainId }: DomainInfoCardProps)
         <>
             <Alert>
                 <AlertDescription>
-                    <InfoSections cols={env.flags.enableClients ? 3 : 2}>
+                    <InfoSections cols={2}>
                         <InfoSection>
                             <InfoSectionTitle>
                                 {t("type")}

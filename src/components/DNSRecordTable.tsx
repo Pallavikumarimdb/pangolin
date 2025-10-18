@@ -15,7 +15,7 @@ export type DNSRecordRow = {
     recordType: string; // "NS" | "CNAME" | "A" | "TXT"
     baseDomain: string | null;
     value: string;
-    verified?: boolean; 
+    verified?: boolean;
 };
 
 type Props = {
@@ -32,17 +32,16 @@ export default function DNSRecordsTable({ records, domainId, isRefreshing }: Pro
             accessorKey: "baseDomain",
             header: ({ column }) => {
                 return (
-                    <Button
-                        variant="ghost"
+                    <div
                     >
                         {t("recordName", { fallback: "Record name" })}
-                    </Button>
+                    </div>
                 );
             },
             cell: ({ row }) => {
                 const baseDomain = row.original.baseDomain;
                 return (
-                    <div className="font-mono text-sm">
+                    <div>
                         {baseDomain || "-"}
                     </div>
                 );
@@ -52,11 +51,10 @@ export default function DNSRecordsTable({ records, domainId, isRefreshing }: Pro
             accessorKey: "recordType",
             header: ({ column }) => {
                 return (
-                    <Button
-                        variant="ghost"
+                    <div
                     >
                         {t("type")}
-                    </Button>
+                    </div>
                 );
             },
             cell: ({ row }) => {
@@ -72,11 +70,10 @@ export default function DNSRecordsTable({ records, domainId, isRefreshing }: Pro
             accessorKey: "ttl",
             header: ({ column }) => {
                 return (
-                    <Button
-                        variant="ghost"
+                    <div
                     >
                         {t("TTL")}
-                    </Button>
+                    </div>
                 );
             },
             cell: ({ row }) => {
@@ -95,10 +92,8 @@ export default function DNSRecordsTable({ records, domainId, isRefreshing }: Pro
             cell: ({ row }) => {
                 const value = row.original.value;
                 return (
-                    <div className="flex items-center gap-2">
-                        <div className="font-mono text-sm truncate max-w-md">
-                            {value}
-                        </div>
+                    <div>
+                        {value}
                     </div>
                 );
             }
@@ -107,11 +102,10 @@ export default function DNSRecordsTable({ records, domainId, isRefreshing }: Pro
             accessorKey: "verified",
             header: ({ column }) => {
                 return (
-                    <Button
-                        variant="ghost"
+                    <div
                     >
                         {t("status")}
-                    </Button>
+                    </div>
                 );
             },
             cell: ({ row }) => {

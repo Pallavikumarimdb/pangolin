@@ -1906,5 +1906,6 @@
     "preferWildcardCertDescription": "Attempt to generate a wildcard certificate (require a properly configured certificate resolver).",
     "recordName": "Record Name",
     "auto": "Auto",
-    "TTL": "TTL"
+    "TTL": "TTL",
+    "howToAddRecords": "How to Add Records"
 }

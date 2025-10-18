@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@app/components/ui/button";
 import { useMemo, useState } from "react";
-import { Plus, RefreshCw } from "lucide-react";
+import { ExternalLink, Plus, RefreshCw } from "lucide-react";
 import {
     Card,
     CardContent,
@@ -107,56 +107,25 @@ export function DNSRecordsDataTable<TData, TValue>({
         <div className="container mx-auto max-w-12xl">
             <Card>
                 <CardHeader className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pb-4">
-                    <div className="flex flex-row space-y-3 w-full sm:mr-2 gap-2">
+                    <div className="flex flex-row space-y-3 w-full sm:mr-2 gap-2 justify-between">
                         <div className="relative w-full sm:max-w-sm flex flex-row gap-10 items-center">
-                            <h1 className="">DNS Records</h1>
+                            <h1 className="font-bold">DNS Records</h1>
                             <Badge variant="secondary">Required</Badge>
                         </div>
-                        {tabs && tabs.length > 0 && (
-                            <Tabs
-                                value={activeTab}
-                                className="w-full"
-                            >
-                                <TabsList>
-                                    {tabs.map((tab) => (
-                                        <TabsTrigger
-                                            key={tab.id}
-                                            value={tab.id}
-                                        >
-                                            {tab.label} (
-                                            {data.filter(tab.filterFn).length})
-                                        </TabsTrigger>
-                                    ))}
-                                </TabsList>
-                            </Tabs>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-2 sm:justify-end">
-                        {onRefresh && (
-                            <Button
-                                variant="outline"
-                                onClick={onRefresh}
-                                disabled={isRefreshing}
-                            >
-                                <RefreshCw
-                                    className={`mr-2 h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
-                                />
-                                {t("refresh")}
-                            </Button>
-                        )}
-                        {onAdd && addButtonText && (
-                            <Button onClick={onAdd}>
-                                <Plus className="mr-2 h-4 w-4" />
-                                {addButtonText}
-                            </Button>
-                        )}
+                        <Button
+                            variant="outline"
+                            size="sm"
+                        >
+                            <ExternalLink className="h-4 w-4 mr-1"/>
+                            {t("howToAddRecords")}
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             {table.getHeaderGroups().map((headerGroup) => (
-                                <TableRow key={headerGroup.id}>
+                                <TableRow key={headerGroup.id} className="bg-[#E8E8E8] dark:bg-transparent">
                                     {headerGroup.headers.map((header) => (
                                         <TableHead key={header.id}>
                                             {header.isPlaceholder
