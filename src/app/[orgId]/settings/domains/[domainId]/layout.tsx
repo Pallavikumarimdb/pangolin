@@ -1,50 +1,38 @@
-import { internal } from "@app/lib/api";
-import { AxiosResponse } from "axios";
 import { redirect } from "next/navigation";
 import { authCookieHeader } from "@app/lib/api/cookies";
-import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
-import { getTranslations } from "next-intl/server";
+import { internal } from "@app/lib/api";
 import { GetDomainResponse } from "@server/routers/domain/getDomain";
-import DomainProvider from "@app/providers/DomainProvider";
-import DomainInfoCard from "@app/components/DomainInfoCard";
+import { AxiosResponse } from "axios";
+import { getTranslations } from "next-intl/server";
+import SettingsLayoutClient from "./DomainSettingsLayout";
 
 interface SettingsLayoutProps {
-    children: React.ReactNode;
-    params: Promise<{ domainId: string; orgId: string }>;
+  children: React.ReactNode;
+  params: Promise<{ domainId: string; orgId: string }>;
 }
 
-export default async function SettingsLayout(props: SettingsLayoutProps) {
-    const params = await props.params;
+export default async function SettingsLayout({ children, params }: SettingsLayoutProps) {
+  const { domainId, orgId } = await params;
 
-    const { children } = props;
-
-    let domain = null;
-    try {
-        const res = await internal.get<AxiosResponse<GetDomainResponse>>(
-            `/org/${params.orgId}/domain/${params.domainId}`,
-            await authCookieHeader()
-        );
-        domain = res.data.data;
-        console.log(JSON.stringify(domain));
-    } catch {
-        redirect(`/${params.orgId}/settings/domains`);
-    }
-
-    const t = await getTranslations();
-
-
-    return (
-        <>
-            <SettingsSectionTitle
-                title={domain ? domain.baseDomain : t('domainSetting')}
-                description={t('domainSettingDescription')}
-            />
-
-            <DomainProvider domain={domain}>
-                <div className="space-y-6">
-                    <DomainInfoCard orgId={params.orgId} domainId={params.domainId} />
-                </div>
-            </DomainProvider>
-        </>
+  let domain = null;
+  try {
+    const res = await internal.get<AxiosResponse<GetDomainResponse>>(
+      `/org/${orgId}/domain/${domainId}`,
+      await authCookieHeader()
     );
+    domain = res.data.data;
+  } catch {
+    redirect(`/${orgId}/settings/domains`);
+  }
+
+  const t = await getTranslations();
+
+  return (
+    <SettingsLayoutClient
+      orgId={orgId}
+      domain={domain}
+    >
+      {children}
+    </SettingsLayoutClient>
+  );
 }
