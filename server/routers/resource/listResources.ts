@@ -47,7 +47,6 @@ type JoinedRow = {
     niceId: string;
     name: string;
     ssl: boolean;
-    niceId: string;
     fullDomain: string | null;
     passwordId: number | null;
     sso: boolean;
@@ -81,6 +80,7 @@ export type ResourceWithTargets = {
     enabled: boolean;
     domainId: string | null;
     niceId: string;
+    headerAuthId: number | null;
     targets: Array<{
         targetId: number;
         ip: string;
