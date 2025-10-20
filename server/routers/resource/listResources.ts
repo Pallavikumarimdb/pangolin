@@ -57,6 +57,7 @@ type JoinedRow = {
     proxyPort: number | null;
     enabled: boolean;
     domainId: string | null;
+    headerAuthId: number | null;
 
     targetId: number | null;
     targetIp: string | null;
@@ -262,14 +263,19 @@ export async function listResources(
                     proxyPort: row.proxyPort,
                     enabled: row.enabled,
                     domainId: row.domainId,
-                    niceId: row.niceId,
+                    headerAuthId: row.headerAuthId,
                     targets: [],
                 };
                 map.set(row.resourceId, entry);
             }
 
-            // Push target if present (left join can be null)
-            if (row.targetId != null && row.targetIp && row.targetPort != null && row.targetEnabled != null) {
+            // Push target if present
+            if (
+                row.targetId != null &&
+                row.targetIp &&
+                row.targetPort != null &&
+                row.targetEnabled != null
+            ) {
                 entry.targets.push({
                     targetId: row.targetId,
                     ip: row.targetIp,
