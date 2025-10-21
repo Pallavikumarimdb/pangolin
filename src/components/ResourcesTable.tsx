@@ -32,6 +32,9 @@ import {
     Plus,
     Search,
     ChevronDown,
+    Clock,
+    Wifi,
+    WifiOff,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -70,6 +73,15 @@ import EditInternalResourceDialog from "@app/components/EditInternalResourceDial
 import CreateInternalResourceDialog from "@app/components/CreateInternalResourceDialog";
 import { Alert, AlertDescription } from "@app/components/ui/alert";
 
+
+export type TargetHealth = {
+    targetId: number;
+    ip: string;
+    port: number;
+    enabled: boolean;
+    healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
+};
+
 export type ResourceRow = {
     id: number;
     nice: string | null;
@@ -85,8 +97,52 @@ export type ResourceRow = {
     ssl: boolean;
     targetHost?: string;
     targetPort?: number;
+    targets?: TargetHealth[];
 };
 
+
+function getOverallHealthStatus(targets?: TargetHealth[]): 'online' | 'degraded' | 'offline' | 'unknown' {
+    if (!targets || targets.length === 0) {
+        return 'unknown';
+    }
+
+    const monitoredTargets = targets.filter(t => t.enabled && t.healthStatus && t.healthStatus !== 'unknown');
+
+    if (monitoredTargets.length === 0) {
+        return 'unknown';
+    }
+
+    const healthyCount = monitoredTargets.filter(t => t.healthStatus === 'healthy').length;
+    const unhealthyCount = monitoredTargets.filter(t => t.healthStatus === 'unhealthy').length;
+
+    if (healthyCount === monitoredTargets.length) {
+        return 'online';
+    } else if (unhealthyCount === monitoredTargets.length) {
+        return 'offline';
+    } else {
+        return 'degraded';
+    }
+}
+
+function StatusIcon({ status, className = "" }: {
+    status: 'online' | 'degraded' | 'offline' | 'unknown';
+    className?: string;
+}) {
+    const iconClass = `h-4 w-4 ${className}`;
+
+    switch (status) {
+        case 'online':
+            return <Wifi className={`${iconClass} text-green-500`} />;
+        case 'degraded':
+            return <Wifi className={`${iconClass} text-yellow-500`} />;
+        case 'offline':
+            return <WifiOff className={`${iconClass} text-red-500`} />;
+        case 'unknown':
+            return <Clock className={`${iconClass} text-gray-400`} />;
+        default:
+            return null;
+    }
+}
 export type InternalResourceRow = {
     id: number;
     name: string;
@@ -148,6 +204,7 @@ const setStoredPageSize = (pageSize: number, tableId?: string): void => {
         console.warn('Failed to save page size to localStorage:', error);
     }
 };
+
 
 
 export default function ResourcesTable({
@@ -361,6 +418,76 @@ export default function ResourcesTable({
             });
     }
 
+    function TargetStatusCell({ targets }: { targets?: TargetHealth[] }) {
+        const overallStatus = getOverallHealthStatus(targets);
+
+        if (!targets || targets.length === 0) {
+            return (
+                <div className="flex items-center gap-2">
+                    <StatusIcon status="unknown" />
+                    <span className="text-sm text-muted-foreground">No targets</span>
+                </div>
+            );
+        }
+
+        const monitoredTargets = targets.filter(t => t.enabled && t.healthStatus && t.healthStatus !== 'unknown');
+        const unknownTargets = targets.filter(t => !t.enabled || !t.healthStatus || t.healthStatus === 'unknown');
+
+        return (
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="sm" className="flex items-center gap-2 h-8">
+                        <StatusIcon status={overallStatus} />
+                        <span className="text-sm">
+                            {overallStatus === 'online' && 'Healthy'}
+                            {overallStatus === 'degraded' && 'Degraded'}
+                            {overallStatus === 'offline' && 'Offline'}
+                            {overallStatus === 'unknown' && 'Unknown'}
+                        </span>
+                        <ChevronDown className="h-3 w-3" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-[280px]">
+                    {monitoredTargets.length > 0 && (
+                        <>
+                            {monitoredTargets.map((target) => (
+                                <DropdownMenuItem key={target.targetId} className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <StatusIcon
+                                            status={target.healthStatus === 'healthy' ? 'online' : 'offline'}
+                                            className="h-3 w-3"
+                                        />
+                                        <CopyToClipboard text={`${target.ip}:${target.port}`} />
+                                    </div>
+                                    <span className={`text-xs capitalize ${target.healthStatus === 'healthy' ? 'text-green-600' : 'text-red-600'
+                                        }`}>
+                                        {target.healthStatus}
+                                    </span>
+                                </DropdownMenuItem>
+                            ))}
+                        </>
+                    )}
+                    {unknownTargets.length > 0 && (
+                        <>
+                            {unknownTargets.map((target) => (
+                                <DropdownMenuItem key={target.targetId} className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <StatusIcon status="unknown" className="h-3 w-3" />
+                                        <CopyToClipboard text={`${target.ip}:${target.port}`} />
+                                    </div>
+                                    <span className="text-xs text-gray-500">
+                                        {!target.enabled ? 'Disabled' : 'Not monitored'}
+                                    </span>
+                                </DropdownMenuItem>
+                            ))}
+                        </>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
+        );
+    }
+
+    
     const proxyColumns: ColumnDef<ResourceRow>[] = [
         {
             accessorKey: "name",
@@ -403,8 +530,8 @@ export default function ResourcesTable({
             }
         },
         {
-            id: "target",
-            accessorKey: "target",
+            id: "status",
+            accessorKey: "status",
             header: ({ column }) => {
                 return (
                     <Button
@@ -413,52 +540,21 @@ export default function ResourcesTable({
                             column.toggleSorting(column.getIsSorted() === "asc")
                         }
                     >
-                        {t("target")}
+                        {t("status")}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                     </Button>
                 );
             },
             cell: ({ row }) => {
-                const resourceRow = row.original as ResourceRow & {
-                    targets?: { ip: string; port: number }[];
-                };
-
-                const targets = resourceRow.targets ?? [];
-
-                if (targets.length === 0) {
-                    return <span className="text-muted-foreground">-</span>;
-                }
-
-                const count = targets.length;
-
-                return (
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="flex items-center"
-                            >
-                                <ChevronDown className="h-4 w-4 mr-1" />
-                                {`${count} Configurations`}
-                            </Button>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent align="start" className="min-w-[200px]">
-                            {targets.map((target, idx) => {
-                                return (
-                                    <DropdownMenuItem key={idx} className="flex items-center gap-2">
-                                        <CopyToClipboard
-                                            text={`${target.ip}:${target.port}`}
-                                            isLink={false}
-                                        />
-                                    </DropdownMenuItem>
-                                );
-                            })}
-                        </DropdownMenuContent>
-                    </DropdownMenu>
-                );
+                const resourceRow = row.original;
+                return <TargetStatusCell targets={resourceRow.targets} />;
             },
+            sortingFn: (rowA, rowB) => {
+                const statusA = getOverallHealthStatus(rowA.original.targets);
+                const statusB = getOverallHealthStatus(rowB.original.targets);
+                const statusOrder = { online: 3, degraded: 2, offline: 1, unknown: 0 };
+                return statusOrder[statusA] - statusOrder[statusB];
+            }
         },
         {
             accessorKey: "domain",

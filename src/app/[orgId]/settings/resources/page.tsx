@@ -92,7 +92,14 @@ export default async function ResourcesPage(props: ResourcesPageProps) {
           : "not_protected",
       enabled: resource.enabled,
       domainId: resource.domainId || undefined,
-      ssl: resource.ssl
+      ssl: resource.ssl,
+      targets: resource.targets?.map(target => ({
+        targetId: target.targetId,
+        ip: target.ip,
+        port: target.port,
+        enabled: target.enabled,
+        healthStatus: target.healthStatus
+      }))
     };
   });
 

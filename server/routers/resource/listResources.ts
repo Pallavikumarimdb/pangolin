@@ -8,6 +8,7 @@ import {
     resourcePassword,
     resourcePincode,
     targets,
+    targetHealthCheck,
 } from "@server/db";
 import response from "@server/lib/response";
 import HttpCode from "@server/types/HttpCode";
@@ -63,6 +64,9 @@ type JoinedRow = {
     targetIp: string | null;
     targetPort: number | null;
     targetEnabled: boolean | null;
+
+    hcHealth: string | null;
+    hcEnabled: boolean | null;
 };
 
 // grouped by resource with targets[]) 
@@ -87,6 +91,7 @@ export type ResourceWithTargets = {
         ip: string;
         port: number;
         enabled: boolean;
+        healthStatus?: 'healthy' | 'unhealthy' | 'unknown';
     }>;
 };
 
@@ -114,6 +119,8 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             targetPort: targets.port,
             targetEnabled: targets.enabled,
 
+            hcHealth: targetHealthCheck.hcHealth,
+            hcEnabled: targetHealthCheck.hcEnabled,
         })
         .from(resources)
         .leftJoin(
@@ -129,6 +136,10 @@ function queryResources(accessibleResourceIds: number[], orgId: string) {
             eq(resourceHeaderAuth.resourceId, resources.resourceId)
         )
         .leftJoin(targets, eq(targets.resourceId, resources.resourceId))
+        .leftJoin(
+            targetHealthCheck,
+            eq(targetHealthCheck.targetId, targets.targetId)
+        )
         .where(
             and(
                 inArray(resources.resourceId, accessibleResourceIds),
@@ -269,18 +280,19 @@ export async function listResources(
                 map.set(row.resourceId, entry);
             }
 
-            // Push target if present
-            if (
-                row.targetId != null &&
-                row.targetIp &&
-                row.targetPort != null &&
-                row.targetEnabled != null
-            ) {
+            if (row.targetId != null && row.targetIp && row.targetPort != null && row.targetEnabled != null) {
+                let healthStatus: 'healthy' | 'unhealthy' | 'unknown' = 'unknown';
+
+                if (row.hcEnabled && row.hcHealth) {
+                    healthStatus = row.hcHealth as 'healthy' | 'unhealthy' | 'unknown';
+                }
+
                 entry.targets.push({
                     targetId: row.targetId,
                     ip: row.targetIp,
                     port: row.targetPort,
                     enabled: row.targetEnabled,
+                    healthStatus: healthStatus,
                 });
             }
         }
