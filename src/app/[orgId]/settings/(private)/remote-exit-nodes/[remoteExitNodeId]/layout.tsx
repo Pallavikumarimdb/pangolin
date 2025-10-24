@@ -6,6 +6,8 @@ import { authCookieHeader } from "@app/lib/api/cookies";
 import SettingsSectionTitle from "@app/components/SettingsSectionTitle";
 import { getTranslations } from "next-intl/server";
 import RemoteExitNodeProvider from "@app/providers/RemoteExitNodeProvider";
+import { HorizontalTabs } from "@app/components/HorizontalTabs";
+import ExitNodeInfoCard from "@app/components/ExitNodeInfoCard";
 
 interface SettingsLayoutProps {
     children: React.ReactNode;
@@ -31,6 +33,13 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
 
     const t = await getTranslations();
 
+    const navItems = [
+        {
+            title: t('general'),
+            href: "/{orgId}/settings/remote-exit-nodes/{remoteExitNodeId}/general"
+        }
+    ];
+
     return (
         <>
             <SettingsSectionTitle
@@ -39,7 +48,10 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
             />
 
             <RemoteExitNodeProvider remoteExitNode={remoteExitNode}>
-                <div className="space-y-6">{children}</div>
+                <div className="space-y-6">
+                    <ExitNodeInfoCard />
+                    <HorizontalTabs items={navItems}>{children}</HorizontalTabs>
+                </div>
             </RemoteExitNodeProvider>
         </>
     );

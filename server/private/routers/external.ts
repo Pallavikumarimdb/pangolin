@@ -236,6 +236,14 @@ authenticated.put(
     remoteExitNode.createRemoteExitNode
 );
 
+authenticated.put(
+    "/org/:orgId/update-remote-exit-node",
+    verifyValidLicense,
+    verifyOrgAccess,
+    verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
+    remoteExitNode.updateRemoteExitNode
+);
+
 authenticated.get(
     "/org/:orgId/remote-exit-nodes",
     verifyValidLicense,
