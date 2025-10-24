@@ -232,6 +232,7 @@ export default function ExitNodesTable({
             id: "actions",
             cell: ({ row }) => {
                 const nodeRow = row.original;
+                const remoteExitNodeId = nodeRow.id;
                 return (
                     <div className="flex items-center justify-end gap-2">
                         <DropdownMenu>
@@ -242,6 +243,14 @@ export default function ExitNodesTable({
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                                <Link
+                                    className="block w-full"
+                                    href={`/${nodeRow.orgId}/settings/remote-exit-nodes/${remoteExitNodeId}`}
+                                >
+                                    <DropdownMenuItem>
+                                        {t("viewSettings")}
+                                    </DropdownMenuItem>
+                                </Link>
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedNode(nodeRow);
