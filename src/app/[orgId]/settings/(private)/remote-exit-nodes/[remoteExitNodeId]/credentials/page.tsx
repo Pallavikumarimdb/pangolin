@@ -25,7 +25,7 @@ import {
 } from "@server/routers/remoteExitNode/types";
 import { useRemoteExitNodeContext } from "@app/hooks/useRemoteExitNodeContext";
 
-export default function GeneralPage() {
+export default function CredentialsPage() {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const { orgId } = useParams();

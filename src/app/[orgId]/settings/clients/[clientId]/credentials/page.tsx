@@ -22,7 +22,7 @@ import CopyToClipboard from "@app/components/CopyToClipboard";
 import { PickClientDefaultsResponse } from "@server/routers/client";
 import { useClientContext } from "@app/hooks/useClientContext";
 
-export default function GeneralPage() {
+export default function CredentialsPage() {
     const { env } = useEnvContext();
     const api = createApiClient({ env });
     const { orgId } = useParams();

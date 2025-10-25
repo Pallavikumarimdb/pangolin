@@ -1892,6 +1892,7 @@
     "toConfirm": "to confirm",
     "deleteClientQuestion": "Are you sure you want to remove the client from the site and organization?",
     "clientMessageRemove": "Once removed, the client will no longer be able to connect to the site.",
+    "credentials": "Credentials",
     "savecredentials": "Save Credentials",
     "regeneratecredentials": "Regenerate Credentials",
     "regenerateClientCredentials": "Regenerate and save your managed credentials",
