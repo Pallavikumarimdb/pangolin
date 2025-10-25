@@ -1891,5 +1891,11 @@
     "cannotbeUndone": "This can not be undone.",
     "toConfirm": "to confirm",
     "deleteClientQuestion": "Are you sure you want to remove the client from the site and organization?",
-    "clientMessageRemove": "Once removed, the client will no longer be able to connect to the site."
+    "clientMessageRemove": "Once removed, the client will no longer be able to connect to the site.",
+    "savecredentials": "Save Credentials",
+    "regeneratecredentials": "Regenerate Credentials",
+    "regenerateClientCredentials": "Regenerate and save your managed credentials",
+    "generatedcredentials": "Generated Credentials",
+    "copyandsavethesecredentials": "Copy and save these credentials",
+    "copyandsavethesecredentialsdescription": "These credentials will not be shown again after you leave this page. Save them securely now."
 }

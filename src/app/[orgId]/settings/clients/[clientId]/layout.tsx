@@ -34,6 +34,10 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
         {
             title: "General",
             href: `/{orgId}/settings/clients/{clientId}/general`
+        },
+        {
+            title: "Credentials",
+            href: `/{orgId}/settings/clients/{clientId}/credentials`
         }
     ];
 

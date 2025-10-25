@@ -111,10 +111,10 @@ export default function GeneralPage() {
             <SettingsSection>
                 <SettingsSectionHeader>
                     <SettingsSectionTitle>
-                        {t("Generated Credentials")}
+                        {t("generatedcredentials")}
                     </SettingsSectionTitle>
                     <SettingsSectionDescription>
-                        {t("Regenerate and save your managed credentials")}
+                        {t("regenerateClientCredentials")}
                     </SettingsSectionDescription>
                 </SettingsSectionHeader>
 
@@ -125,7 +125,7 @@ export default function GeneralPage() {
                             loading={loading}
                             disabled={loading}
                         >
-                            {t("Regenerate Credentials")}
+                            {t("regeneratecredentials")}
                         </Button>
                     ) : (
                         <>
@@ -138,11 +138,11 @@ export default function GeneralPage() {
                             <Alert variant="neutral" className="mt-4">
                                 <InfoIcon className="h-4 w-4" />
                                 <AlertTitle className="font-semibold">
-                                    {t("Copy and save these credentials")}
+                                    {t("copyandsavethesecredentials")}
                                 </AlertTitle>
                                 <AlertDescription>
                                     {t(
-                                        "These credentials will not be shown again after you leave this page. Save them securely now."
+                                        "copyandsavethesecredentialsdescription"
                                     )}
                                 </AlertDescription>
                             </Alert>
@@ -152,14 +152,14 @@ export default function GeneralPage() {
                                     variant="outline"
                                     onClick={() => setCredentials(null)}
                                 >
-                                    {t("Cancel")}
+                                    {t("cancel")}
                                 </Button>
                                 <Button
                                     onClick={handleSave}
                                     loading={saving}
                                     disabled={saving}
                                 >
-                                    {t("Save Credentials")}
+                                    {t("savecredentials")}
                                 </Button>
                             </div>
                         </>
