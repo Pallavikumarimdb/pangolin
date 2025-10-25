@@ -2082,6 +2082,7 @@
     "supportMessageSent": "Message Sent!",
     "supportWillContact": "We'll be in touch shortly!",
     "selectLogRetention": "Select log retention",
+    "credentials": "Credentials",
     "savecredentials": "Save Credentials",
     "regeneratecredentials": "Regenerate Credentials",
     "regenerateClientCredentials": "Regenerate and save your managed credentials",
