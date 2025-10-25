@@ -2081,5 +2081,11 @@
     "supportSend": "Send",
     "supportMessageSent": "Message Sent!",
     "supportWillContact": "We'll be in touch shortly!",
-    "selectLogRetention": "Select log retention"
+    "selectLogRetention": "Select log retention",
+    "savecredentials": "Save Credentials",
+    "regeneratecredentials": "Regenerate Credentials",
+    "regenerateClientCredentials": "Regenerate and save your managed credentials",
+    "generatedcredentials": "Generated Credentials",
+    "copyandsavethesecredentials": "Copy and save these credentials",
+    "copyandsavethesecredentialsdescription": "These credentials will not be shown again after you leave this page. Save them securely now."
 }
