@@ -21,7 +21,7 @@ const updateSiteBodySchema = z
         newtId: z.string().min(1).max(255).optional(),
         newtSecret: z.string().min(1).max(255).optional(),
     })
-    .strict()
+    .strict();
 
 registry.registerPath({
     method: "post",
