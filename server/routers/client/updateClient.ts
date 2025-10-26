@@ -32,9 +32,6 @@ const updateClientSchema = z
         siteIds: z
             .array(z.number().int().positive())
             .optional(),
-        olmId: z.string().min(1).optional(),
-        secret: z.string().min(1).optional(),
-
     })
     .strict();
 
@@ -79,7 +76,7 @@ export async function updateClient(
             );
         }
 
-        const { name, siteIds, olmId, secret } = parsedBody.data;
+        const { name, siteIds } = parsedBody.data;
 
         const parsedParams = updateClientParamsSchema.safeParse(req.params);
         if (!parsedParams.success) {
@@ -92,11 +89,6 @@ export async function updateClient(
         }
 
         const { clientId } = parsedParams.data;
-
-        let secretHash = undefined;
-        if (secret) {
-            secretHash = await hashPassword(secret);
-        }
 
 
         // Fetch the client to make sure it exists and the user has access to it
@@ -144,22 +136,6 @@ export async function updateClient(
                     .update(clients)
                     .set({ name })
                     .where(eq(clients.clientId, clientId));
-            }
-
-            const [existingOlm] = await trx
-                .select()
-                .from(olms)
-                .where(eq(olms.clientId, clientId))
-                .limit(1);
-
-            if (existingOlm && olmId && secretHash) {
-                await trx
-                    .update(olms)
-                    .set({
-                        olmId,
-                        secretHash
-                    })
-                    .where(eq(olms.clientId, clientId));
             }
 
             // Update site associations if provided

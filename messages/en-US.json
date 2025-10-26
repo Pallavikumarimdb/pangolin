@@ -2085,8 +2085,12 @@
     "credentials": "Credentials",
     "savecredentials": "Save Credentials",
     "regeneratecredentials": "Regenerate Credentials",
-    "regenerateClientCredentials": "Regenerate and save your managed credentials",
+    "regenerateCredentials": "Regenerate and save your credentials",
     "generatedcredentials": "Generated Credentials",
     "copyandsavethesecredentials": "Copy and save these credentials",
-    "copyandsavethesecredentialsdescription": "These credentials will not be shown again after you leave this page. Save them securely now."
+    "copyandsavethesecredentialsdescription": "These credentials will not be shown again after you leave this page. Save them securely now.",
+    "credentialsSaved" : "Credentials Saved",
+    "credentialsSavedDescription": "Credentials have been regenerated and saved successfully.",
+    "credentialsSaveError": "Credentials Save Error",
+    "credentialsSaveErrorDescription": "An error occurred while regenerating and saving the credentials."
 }

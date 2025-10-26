@@ -1,7 +1,6 @@
 "use client";
 
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { InfoIcon } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useClientContext } from "@app/hooks/useClientContext";
 import {
     InfoSection,
@@ -19,9 +18,7 @@ export default function SiteInfoCard({}: ClientInfoCardProps) {
 
     return (
         <Alert>
-            <InfoIcon className="h-4 w-4" />
-            <AlertTitle className="font-semibold">{t("clientInformation")}</AlertTitle>
-            <AlertDescription className="mt-4">
+            <AlertDescription>
                 <InfoSections cols={2}>
                         <>
                             <InfoSection>

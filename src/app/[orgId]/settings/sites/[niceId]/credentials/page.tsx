@@ -19,8 +19,8 @@ import { useParams, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { InfoSection, InfoSectionContent, InfoSections, InfoSectionTitle } from "@app/components/InfoSection";
 import CopyToClipboard from "@app/components/CopyToClipboard";
-import { PickClientDefaultsResponse } from "@server/routers/client";
-import { useClientContext } from "@app/hooks/useClientContext";
+import { PickSiteDefaultsResponse } from "@server/routers/site";
+import { useSiteContext } from "@app/hooks/useSiteContext";
 
 export default function CredentialsPage() {
     const { env } = useEnvContext();
@@ -28,20 +28,21 @@ export default function CredentialsPage() {
     const { orgId } = useParams();
     const router = useRouter();
     const t = useTranslations();
-    const [olmId, setOlmId] = useState("");
-    const [olmSecret, setOlmSecret] = useState("");
-    const { client, updateClient } = useClientContext();
+    const [newtId, setNewtId] = useState("");
+    const [newtSecret, setNewtSecret] = useState("");
+    const { site, updateSite } = useSiteContext();
 
-    const [clientDefaults, setClientDefaults] =
-        useState<PickClientDefaultsResponse | null>(null);
+    const [siteDefaults, setSiteDefaults] =
+        useState<PickSiteDefaultsResponse | null>(null);
+
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
 
     // Clear credentials when user leaves/reloads
     useEffect(() => {
         const clearCreds = () => {
-            setOlmId("");
-            setOlmSecret("");
+            setNewtId("");
+            setNewtSecret("");
         };
         window.addEventListener("beforeunload", clearCreds);
         return () => window.removeEventListener("beforeunload", clearCreds);
@@ -51,17 +52,17 @@ export default function CredentialsPage() {
         try {
             setLoading(true);
             await api
-                .get(`/org/${orgId}/pick-client-defaults`)
+                .get(`/org/${orgId}/pick-site-defaults`)
                 .then((res) => {
                     if (res && res.status === 200) {
                         const data = res.data.data;
 
-                        setClientDefaults(data);
+                        setSiteDefaults(data);
 
-                        const olmId = data.olmId;
-                        const olmSecret = data.olmSecret;
-                        setOlmId(olmId);
-                        setOlmSecret(olmSecret);
+                        const newtId = data.newtId;
+                        const newtSecret = data.newtSecret;
+                        setNewtId(newtId);
+                        setNewtSecret(newtSecret);
 
                     }
                 });
@@ -74,9 +75,9 @@ export default function CredentialsPage() {
         setLoading(true);
 
         try {
-            await api.post(`/client/${client?.clientId}/regenerate-secret`, {
-                olmId: clientDefaults?.olmId,
-                secret: clientDefaults?.olmSecret,
+            await api.post(`/site/${site?.siteId}/regenerate-secret`, {
+                newtId: siteDefaults?.newtId,
+                newtSecret: siteDefaults?.newtSecret,
             });
 
             toast({
@@ -112,7 +113,7 @@ export default function CredentialsPage() {
                 </SettingsSectionHeader>
 
                 <SettingsSectionBody>
-                    {!clientDefaults ? (
+                    {!siteDefaults ? (
                         <Button
                             onClick={handleRegenerate}
                             loading={loading}
@@ -125,17 +126,19 @@ export default function CredentialsPage() {
                             <SettingsSection>
                                 <SettingsSectionHeader>
                                     <SettingsSectionTitle>
-                                        {t("clientOlmCredentials")}
+                                        {t("siteNewtCredentials")}
                                     </SettingsSectionTitle>
                                     <SettingsSectionDescription>
-                                        {t("clientOlmCredentialsDescription")}
+                                        {t(
+                                            "siteNewtCredentialsDescription"
+                                        )}
                                     </SettingsSectionDescription>
                                 </SettingsSectionHeader>
                                 <SettingsSectionBody>
                                     <InfoSections cols={3}>
                                         <InfoSection>
                                             <InfoSectionTitle>
-                                                {t("olmEndpoint")}
+                                                {t("newtEndpoint")}
                                             </InfoSectionTitle>
                                             <InfoSectionContent>
                                                 <CopyToClipboard
@@ -147,25 +150,26 @@ export default function CredentialsPage() {
                                         </InfoSection>
                                         <InfoSection>
                                             <InfoSectionTitle>
-                                                {t("olmId")}
+                                                {t("newtId")}
                                             </InfoSectionTitle>
                                             <InfoSectionContent>
                                                 <CopyToClipboard
-                                                    text={olmId}
+                                                    text={newtId}
                                                 />
                                             </InfoSectionContent>
                                         </InfoSection>
                                         <InfoSection>
                                             <InfoSectionTitle>
-                                                {t("olmSecretKey")}
+                                                {t("newtSecretKey")}
                                             </InfoSectionTitle>
                                             <InfoSectionContent>
                                                 <CopyToClipboard
-                                                    text={olmSecret}
+                                                    text={newtSecret}
                                                 />
                                             </InfoSectionContent>
                                         </InfoSection>
                                     </InfoSections>
+
 
                                     <Alert variant="neutral" className="mt-4">
                                         <InfoIcon className="h-4 w-4" />
@@ -185,8 +189,8 @@ export default function CredentialsPage() {
                                 <Button
                                     variant="outline"
                                     onClick={() => {
-                                        setOlmId("");
-                                        setOlmSecret("");
+                                        setNewtId("");
+                                        setNewtSecret("");
                                     }}
                                 >
                                     {t("cancel")}

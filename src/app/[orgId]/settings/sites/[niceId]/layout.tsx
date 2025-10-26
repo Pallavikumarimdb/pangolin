@@ -36,6 +36,10 @@ export default async function SettingsLayout(props: SettingsLayoutProps) {
         {
             title: t('general'),
             href: "/{orgId}/settings/sites/{niceId}/general"
+        },
+        {
+            title: t('credentials'),
+            href: "/{orgId}/settings/sites/{niceId}/credentials"
         }
     ];
 
