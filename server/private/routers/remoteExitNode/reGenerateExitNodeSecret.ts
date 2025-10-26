@@ -32,7 +32,7 @@ const bodySchema = z
     })
     .strict();
 
-export async function updateRemoteExitNode(
+export async function reGenerateExitNodeSecret(
     req: Request,
     res: Response,
     next: NextFunction

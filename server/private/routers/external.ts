@@ -237,11 +237,11 @@ authenticated.put(
 );
 
 authenticated.put(
-    "/org/:orgId/update-remote-exit-node",
+    "/org/:orgId/reGenerate-remote-exit-node-secret",
     verifyValidLicense,
     verifyOrgAccess,
     verifyUserHasAction(ActionsEnum.updateRemoteExitNode),
-    remoteExitNode.updateRemoteExitNode
+    remoteExitNode.reGenerateExitNodeSecret
 );
 
 authenticated.get(

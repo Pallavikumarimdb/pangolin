@@ -79,7 +79,7 @@ export default function CredentialsPage() {
 
             const response = await api.put<
                 AxiosResponse<QuickStartRemoteExitNodeResponse>
-            >(`/org/${orgId}/update-remote-exit-node`, {
+            >(`/org/${orgId}/reGenerate-remote-exit-node-secret`, {
                 remoteExitNodeId: remoteExitNode.remoteExitNodeId,
                 secret: credentials.secret,
             });
