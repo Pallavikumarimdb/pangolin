@@ -117,7 +117,7 @@ export default function CredentialsPage() {
                         <Button
                             onClick={handleRegenerate}
                             loading={loading}
-                            disabled={loading}
+                            disabled={site.type != "newt"}
                         >
                             {t("regeneratecredentials")}
                         </Button>
