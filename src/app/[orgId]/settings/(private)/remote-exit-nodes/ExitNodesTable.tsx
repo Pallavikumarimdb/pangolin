@@ -263,6 +263,14 @@ export default function ExitNodesTable({
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
+                        <Link
+                            href={`/${nodeRow.orgId}/settings/remote-exit-nodes/${remoteExitNodeId}`}
+                        >
+                            <Button variant={"secondary"} size="sm">
+                                {t("edit")}
+                                <ArrowRight className="ml-2 w-4 h-4" />
+                            </Button>
+                        </Link>
                     </div>
                 );
             }

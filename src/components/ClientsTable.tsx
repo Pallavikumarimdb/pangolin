@@ -278,14 +278,14 @@ export default function ClientsTable({ clients, orgId }: ClientTableProps) {
                                 </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                                {/* <Link */}
-                                {/*     className="block w-full" */}
-                                {/*     href={`/${clientRow.orgId}/settings/sites/${clientRow.nice}`} */}
-                                {/* > */}
-                                {/*     <DropdownMenuItem> */}
-                                {/*         View settings */}
-                                {/*     </DropdownMenuItem> */}
-                                {/* </Link> */}
+                                <Link
+                                    className="block w-full"
+                                    href={`/${clientRow.orgId}/settings/clients/${clientRow.id}`}
+                                >
+                                    <DropdownMenuItem>
+                                        View settings
+                                    </DropdownMenuItem>
+                                </Link>
                                 <DropdownMenuItem
                                     onClick={() => {
                                         setSelectedClient(clientRow);
