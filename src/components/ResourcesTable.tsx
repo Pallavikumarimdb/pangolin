@@ -367,22 +367,6 @@ export default function ResourcesTable({
             }
         },
         {
-            accessorKey: "nice",
-            header: ({ column }) => {
-                return (
-                    <Button
-                        variant="ghost"
-                        onClick={() =>
-                            column.toggleSorting(column.getIsSorted() === "asc")
-                        }
-                    >
-                        {t("resource")}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                    </Button>
-                );
-            }
-        },
-        {
             accessorKey: "protocol",
             header: t("protocol"),
             cell: ({ row }) => {
