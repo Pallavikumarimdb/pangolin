@@ -14,7 +14,7 @@ import { useEnvContext } from "@app/hooks/useEnvContext";
 
 type SiteInfoCardProps = {};
 
-export default function SiteInfoCard({}: SiteInfoCardProps) {
+export default function SiteInfoCard({ }: SiteInfoCardProps) {
     const { site, updateSite } = useSiteContext();
     const t = useTranslations();
     const { env } = useEnvContext();
@@ -34,7 +34,15 @@ export default function SiteInfoCard({}: SiteInfoCardProps) {
     return (
         <Alert>
             <AlertDescription>
-                <InfoSections cols={env.flags.enableClients ? 3 : 2}>
+                <InfoSections cols={env.flags.enableClients ? 4 : 3}>
+                    <InfoSection>
+                        <InfoSectionTitle>
+                            {t("niceId")}
+                        </InfoSectionTitle>
+                        <InfoSectionContent>
+                            {site.niceId}
+                        </InfoSectionContent>
+                    </InfoSection>
                     {(site.type == "newt" || site.type == "wireguard") && (
                         <>
                             <InfoSection>

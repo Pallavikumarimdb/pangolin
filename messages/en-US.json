@@ -2081,5 +2081,6 @@
     "supportSend": "Send",
     "supportMessageSent": "Message Sent!",
     "supportWillContact": "We'll be in touch shortly!",
-    "selectLogRetention": "Select log retention"
+    "selectLogRetention": "Select log retention",
+    "niceId": "Nice ID"
 }
