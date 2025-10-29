@@ -74,7 +74,7 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
                     {
                         niceId: tempNiceId.trim()
                     }
-                )
+                );
 
             setNiceId(tempNiceId.trim());
             setIsEditing(false);
