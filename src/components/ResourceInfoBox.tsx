@@ -115,7 +115,7 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
             <AlertDescription>
                 {/* 4 cols because of the certs */}
                 <InfoSections
-                    cols={resource.http && env.flags.usePangolinDns ? 6 : 5}
+                    cols={resource.http && env.flags.usePangolinDns ? 5 : 4}
                 >
                     <InfoSection>
                         <InfoSectionTitle>
