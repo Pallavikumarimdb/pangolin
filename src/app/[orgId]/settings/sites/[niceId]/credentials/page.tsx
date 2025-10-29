@@ -228,14 +228,14 @@ PersistentKeepalive = 5`;
                                                 </div>
                                             </div>
                                         </div>
-                                        <Alert variant="neutral">
+                                        <Alert variant="neutral" className="mt-4">
                                             <InfoIcon className="h-4 w-4" />
                                             <AlertTitle className="font-semibold">
-                                                {t("siteCredentialsSave")}
+                                                {t("copyandsavethesecredentials")}
                                             </AlertTitle>
                                             <AlertDescription>
                                                 {t(
-                                                    "siteCredentialsSaveDescription"
+                                                    "copyandsavethesecredentialsdescription"
                                                 )}
                                             </AlertDescription>
                                         </Alert>
