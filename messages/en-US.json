@@ -2082,5 +2082,10 @@
     "supportMessageSent": "Message Sent!",
     "supportWillContact": "We'll be in touch shortly!",
     "selectLogRetention": "Select log retention",
-    "niceId": "Nice ID"
+    "niceId": "Nice ID",
+    "niceIdUpdated": "Nice ID Updated",
+    "niceIdUpdatedSuccessfully": "Nice ID Updated Successfully",
+    "niceIdUpdateError": "Error updating Nice ID",
+    "niceIdUpdateErrorDescription": "An error occurred while updating the Nice ID.",
+    "niceIdCannotBeEmpty": "Nice ID cannot be empty"
 }
