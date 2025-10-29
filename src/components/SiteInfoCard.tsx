@@ -16,6 +16,7 @@ import { Button } from "./ui/button";
 import { useState } from "react";
 import { useToast } from "@app/hooks/useToast";
 import { createApiClient, formatAxiosError } from "@app/lib/api";
+import { useRouter, usePathname } from "next/navigation";
 
 type SiteInfoCardProps = {};
 
@@ -24,6 +25,8 @@ export default function SiteInfoCard({ }: SiteInfoCardProps) {
     const t = useTranslations();
     const { env } = useEnvContext();
     const api = createApiClient(useEnvContext());
+    const router = useRouter();
+    const pathname = usePathname();
 
     const [isEditing, setIsEditing] = useState(false);
     const [niceId, setNiceId] = useState(site.niceId);
@@ -81,6 +84,10 @@ export default function SiteInfoCard({ }: SiteInfoCardProps) {
             updateSite({
                 niceId: tempNiceId.trim()
             });
+
+            // update the URL to reflect the new niceId
+            const newPath = pathname.replace(`/sites/${niceId}`, `/sites/${tempNiceId.trim()}`);
+            router.replace(newPath);
 
             toast({
                 title: t("niceIdUpdated"),

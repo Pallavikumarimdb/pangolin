@@ -21,6 +21,7 @@ import { useState } from "react";
 import { useToast } from "@app/hooks/useToast";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { AxiosResponse } from "axios";
+import { useRouter, usePathname } from "next/navigation";
 
 type ResourceInfoBoxType = {};
 
@@ -28,6 +29,8 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
     const { resource, authInfo, updateResource } = useResourceContext();
     const { env } = useEnvContext();
     const api = createApiClient(useEnvContext());
+    const router = useRouter();
+    const pathname = usePathname();
 
     const [isEditing, setIsEditing] = useState(false);
     const [niceId, setNiceId] = useState(resource.niceId);
@@ -82,6 +85,10 @@ export default function ResourceInfoBox({ }: ResourceInfoBoxType) {
             updateResource({
                 niceId: tempNiceId.trim()
             });
+
+            // update the URL to reflect the new niceId
+            const newPath = pathname.replace(`/resources/${niceId}`, `/resources/${tempNiceId.trim()}`);
+            router.replace(newPath);
 
             toast({
                 title: t("niceIdUpdated"),
