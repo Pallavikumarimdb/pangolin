@@ -37,7 +37,7 @@ import { Tag, TagInput } from "@app/components/tags/tag-input";
 
 const GeneralFormSchema = z.object({
     name: z.string().nonempty("Name is required"),
-    niceId: z.string().optional(),
+    niceId: z.string().min(1).max(255).optional(),
     dockerSocketEnabled: z.boolean().optional(),
     remoteSubnets: z
         .array(
