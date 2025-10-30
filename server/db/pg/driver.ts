@@ -2,7 +2,7 @@ import { drizzle as DrizzlePostgres } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { readConfigFile } from "@server/lib/readConfigFile";
 import { withReplicas } from "drizzle-orm/pg-core";
-import * as schema from "./schema";
+import * as schema from "./schema/schema";
 
 function createDb() {
     const config = readConfigFile();
