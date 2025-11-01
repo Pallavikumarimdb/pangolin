@@ -14,6 +14,7 @@ import {
     FormMessage
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useResourceContext } from "@app/hooks/useResourceContext";
 import { ListSitesResponse } from "@server/routers/site";
 import { useEffect, useState } from "react";
@@ -39,7 +40,6 @@ import { ListDomainsResponse } from "@server/routers/domain";
 import { UpdateResourceResponse } from "@server/routers/resource";
 import { SwitchInput } from "@app/components/SwitchInput";
 import { useTranslations } from "next-intl";
-import { Checkbox } from "@app/components/ui/checkbox";
 import {
     Credenza,
     CredenzaBody,
@@ -51,7 +51,7 @@ import {
     CredenzaTitle
 } from "@app/components/Credenza";
 import DomainPicker from "@app/components/DomainPicker";
-import { Globe } from "lucide-react";
+import { AlertCircle, Globe } from "lucide-react";
 import { build } from "@server/build";
 import { finalizeSubdomainSanitize } from "@app/lib/subdomain-utils";
 import { DomainRow } from "../../../../../../components/DomainsTable";
@@ -59,6 +59,9 @@ import { toASCII, toUnicode } from "punycode";
 import { useLicenseStatusContext } from "@app/hooks/useLicenseStatusContext";
 import { useSubscriptionStatusContext } from "@app/hooks/useSubscriptionStatusContext";
 import { useUserContext } from "@app/hooks/useUserContext";
+import { Alert, AlertDescription } from "@app/components/ui/alert";
+import { Separator } from "@app/components/ui/separator";
+import { RadioGroup, RadioGroupItem } from "@app/components/ui/radio-group";
 
 export default function GeneralForm() {
     const [formKey, setFormKey] = useState(0);
@@ -106,6 +109,11 @@ export default function GeneralForm() {
             domainId: z.string().optional(),
             proxyPort: z.number().int().min(1).max(65535).optional(),
             // enableProxy: z.boolean().optional()
+            maintenanceModeEnabled: z.boolean().optional(),
+            maintenanceModeType: z.enum(["forced", "automatic"]).optional(),
+            maintenanceTitle: z.string().max(255).optional(),
+            maintenanceMessage: z.string().max(2000).optional(),
+            maintenanceEstimatedTime: z.string().max(100).optional(),
         })
         .refine(
             (data) => {
@@ -136,9 +144,17 @@ export default function GeneralForm() {
             domainId: resource.domainId || undefined,
             proxyPort: resource.proxyPort || undefined,
             // enableProxy: resource.enableProxy || false
+            maintenanceModeEnabled: resource.maintenanceModeEnabled || false,
+            maintenanceModeType: resource.maintenanceModeType || "automatic",
+            maintenanceTitle: resource.maintenanceTitle || "We'll be back soon!",
+            maintenanceMessage: resource.maintenanceMessage || "We are currently performing scheduled maintenance. Please check back soon.",
+            maintenanceEstimatedTime: resource.maintenanceEstimatedTime || "",
         },
         mode: "onChange"
     });
+
+    const isMaintenanceEnabled = form.watch("maintenanceModeEnabled");
+    const maintenanceModeType = form.watch("maintenanceModeType");
 
     useEffect(() => {
         const fetchSites = async () => {
@@ -201,6 +217,11 @@ export default function GeneralForm() {
                     // ...(!resource.http && {
                     //     enableProxy: data.enableProxy
                     // })
+                    maintenanceModeEnabled: data.maintenanceModeEnabled,
+                    maintenanceModeType: data.maintenanceModeType,
+                    maintenanceTitle: data.maintenanceTitle || null,
+                    maintenanceMessage: data.maintenanceMessage || null,
+                    maintenanceEstimatedTime: data.maintenanceEstimatedTime || null,
                 }
             )
             .catch((e) => {
@@ -227,6 +248,11 @@ export default function GeneralForm() {
                 // ...(!resource.http && {
                 //     enableProxy: data.enableProxy
                 // })
+                maintenanceModeEnabled: data.maintenanceModeEnabled,
+                maintenanceModeType: data.maintenanceModeType,
+                maintenanceTitle: data.maintenanceTitle || null,
+                maintenanceMessage: data.maintenanceMessage || null,
+                maintenanceEstimatedTime: data.maintenanceEstimatedTime || null,
             });
 
             toast({
@@ -335,19 +361,19 @@ export default function GeneralForm() {
 
                                         {!resource.http && (
                                             <>
-                                                <FormField
-                                                    control={form.control}
-                                                    name="proxyPort"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>
+                                            <FormField
+                                                control={form.control}
+                                                name="proxyPort"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>
                                                                 {t(
                                                                     "resourcePortNumber"
                                                                 )}
-                                                            </FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    type="number"
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                type="number"
                                                                     value={
                                                                         field.value ??
                                                                         ""
@@ -355,7 +381,7 @@ export default function GeneralForm() {
                                                                     onChange={(
                                                                         e
                                                                     ) =>
-                                                                        field.onChange(
+                                                                    field.onChange(
                                                                             e
                                                                                 .target
                                                                                 .value
@@ -364,20 +390,20 @@ export default function GeneralForm() {
                                                                                         .target
                                                                                         .value
                                                                                 )
-                                                                                : undefined
-                                                                        )
-                                                                    }
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                            <FormDescription>
+                                                                            : undefined
+                                                                    )
+                                                                }
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                        <FormDescription>
                                                                 {t(
                                                                     "resourcePortNumberDescription"
                                                                 )}
-                                                            </FormDescription>
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                        </FormDescription>
+                                                    </FormItem>
+                                                )}
+                                            />
 
                                                 {/* {build == "oss" && (
                                                     <FormField
@@ -418,20 +444,21 @@ export default function GeneralForm() {
                                         )}
 
                                         {resource.http && (
-                                            <div className="space-y-2">
+                                            <>
+                                                <div className="space-y-2">
                                                 <Label>
                                                     {t("resourceDomain")}
                                                 </Label>
-                                                <div className="border p-2 rounded-md flex items-center justify-between">
-                                                    <span className="text-sm text-muted-foreground flex items-center gap-2">
-                                                        <Globe size="14" />
-                                                        {resourceFullDomain}
-                                                    </span>
-                                                    <Button
-                                                        variant="secondary"
-                                                        type="button"
-                                                        size="sm"
-                                                        onClick={() =>
+                                                    <div className="border p-2 rounded-md flex items-center justify-between">
+                                                        <span className="text-sm text-muted-foreground flex items-center gap-2">
+                                                            <Globe size="14" />
+                                                            {resourceFullDomain}
+                                                        </span>
+                                                        <Button
+                                                            variant="secondary"
+                                                            type="button"
+                                                            size="sm"
+                                                            onClick={() =>
                                                             setEditDomainOpen(
                                                                 true
                                                             )
@@ -441,8 +468,176 @@ export default function GeneralForm() {
                                                             "resourceEditDomain"
                                                         )}
                                                     </Button>
+                                                    </div>
                                                 </div>
-                                            </div>
+
+                                                <Separator className="my-6" />
+
+                                                <div className="space-y-4">
+                                                    <div>
+                                                        <h3 className="text-lg font-medium">
+                                                            Maintenance Mode
+                                                        </h3>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            Display a maintenance page to visitors
+                                                        </p>
+                                                    </div>
+
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="maintenanceModeEnabled"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <FormControl>
+                                                                        <SwitchInput
+                                                                            id="enable-maintenance"
+                                                                            checked={field.value}
+                                                                            label="Enable Maintenance Mode"
+                                                                            onCheckedChange={(val) =>
+                                                                                form.setValue(
+                                                                                    "maintenanceModeEnabled",
+                                                                                    val
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </FormControl>
+                                                                </div>
+                                                                <FormDescription>
+                                                                    Show a maintenance page to visitors
+                                                                </FormDescription>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    {isMaintenanceEnabled && (
+                                                        <div className="space-y-4 pl-4 border-l-2 border-primary/20">
+                                                            <FormField
+                                                                control={form.control}
+                                                                name="maintenanceModeType"
+                                                                render={({ field }) => (
+                                                                    <FormItem className="space-y-3">
+                                                                        <FormLabel>
+                                                                            Maintenance Mode Type
+                                                                        </FormLabel>
+                                                                        <FormControl>
+                                                                            <RadioGroup
+                                                                                onValueChange={field.onChange}
+                                                                                defaultValue={field.value}
+                                                                                className="flex flex-col space-y-1"
+                                                                            >
+                                                                                <FormItem className="flex items-start space-x-3 space-y-0">
+                                                                                    <FormControl>
+                                                                                        <RadioGroupItem value="automatic" />
+                                                                                    </FormControl>
+                                                                                    <div className="space-y-1 leading-none">
+                                                                                        <FormLabel className="font-normal">
+                                                                                            <strong>Automatic</strong> (Recommended)
+                                                                                        </FormLabel>
+                                                                                        <FormDescription>
+                                                                                            Show maintenance page only when all backend targets are down or unhealthy. 
+                                                                                            Your resource continues working normally as long as at least one target is healthy.
+                                                                                        </FormDescription>
+                                                                                    </div>
+                                                                                </FormItem>
+                                                                                <FormItem className="flex items-start space-x-3 space-y-0">
+                                                                                    <FormControl>
+                                                                                        <RadioGroupItem value="forced" />
+                                                                                    </FormControl>
+                                                                                    <div className="space-y-1 leading-none">
+                                                                                        <FormLabel className="font-normal">
+                                                                                            <strong>Forced</strong>
+                                                                                        </FormLabel>
+                                                                                        <FormDescription>
+                                                                                            Always show the maintenance page regardless of backend health. 
+                                                                                            Use this for planned maintenance when you want to prevent all access.
+                                                                                        </FormDescription>
+                                                                                    </div>
+                                                                                </FormItem>
+                                                                            </RadioGroup>
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+
+                                                            {maintenanceModeType === "forced" && (
+                                                                <Alert>
+                                                                    <AlertCircle className="h-4 w-4" />
+                                                                    <AlertDescription>
+                                                                        <strong>Warning:</strong> All traffic will be directed to the maintenance page. 
+                                                                        Your backend resources will not receive any requests.
+                                                                    </AlertDescription>
+                                                                </Alert>
+                                                            )}
+
+                                                            <FormField
+                                                                control={form.control}
+                                                                name="maintenanceTitle"
+                                                                render={({ field }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>Page Title</FormLabel>
+                                                                        <FormControl>
+                                                                            <Input 
+                                                                                {...field}
+                                                                                placeholder="We'll be back soon!"
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormDescription>
+                                                                            The main heading displayed on the maintenance page
+                                                                        </FormDescription>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+
+                                                            <FormField
+                                                                control={form.control}
+                                                                name="maintenanceMessage"
+                                                                render={({ field }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>Maintenance Message</FormLabel>
+                                                                        <FormControl>
+                                                                            <Textarea 
+                                                                                {...field}
+                                                                                rows={4}
+                                                                                placeholder="We are currently performing scheduled maintenance. Please check back soon."
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormDescription>
+                                                                            Detailed message explaining the maintenance
+                                                                        </FormDescription>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+
+                                                            <FormField
+                                                                control={form.control}
+                                                                name="maintenanceEstimatedTime"
+                                                                render={({ field }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>
+                                                                            Estimated Completion Time (Optional)
+                                                                        </FormLabel>
+                                                                        <FormControl>
+                                                                            <Input 
+                                                                                {...field}
+                                                                                placeholder="e.g., 2 hours, Nov 1 at 5:00 PM"
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormDescription>
+                                                                            When you expect maintenance to be completed
+                                                                        </FormDescription>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
                                         )}
                                     </form>
                                 </Form>
