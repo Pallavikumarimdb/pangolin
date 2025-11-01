@@ -25,7 +25,7 @@ export const dnsRecords = sqliteTable("dnsRecords", {
 
     recordType: text("recordType").notNull(), // "NS" | "CNAME" | "A" | "TXT"
     baseDomain: text("baseDomain"),
-    value: text("value").notNull(), 
+    value: text("value").notNull(),
     verified: integer("verified", { mode: "boolean" }).notNull().default(false),
 });
 
@@ -143,7 +143,17 @@ export const resources = sqliteTable("resources", {
     }),
     headers: text("headers"), // comma-separated list of headers to add to the request
     proxyProtocol: integer("proxyProtocol", { mode: "boolean" }).notNull().default(false),
-    proxyProtocolVersion: integer("proxyProtocolVersion").default(1)
+    proxyProtocolVersion: integer("proxyProtocolVersion").default(1),
+
+    maintenanceModeEnabled: integer("maintenanceModeEnabled", { mode: "boolean" })
+        .notNull()
+        .default(false),
+    maintenanceModeType: text("maintenanceModeType", {
+        enum: ["forced", "automatic"]
+    }).default("forced"), // "forced" = always show, "automatic" = only when down
+    maintenanceTitle: text("maintenanceTitle"),
+    maintenanceMessage: text("maintenanceMessage"),
+    maintenanceEstimatedTime: text("maintenanceEstimatedTime"),
 
 });
 
