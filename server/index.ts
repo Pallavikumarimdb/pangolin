@@ -22,7 +22,6 @@ import { initCleanup } from "#dynamic/cleanup";
 import license from "#dynamic/license/license";
 import { initLogCleanupInterval } from "@server/lib/cleanupLogs";
 import { fetchServerIp } from "@server/lib/serverIpService";
-import { startMaintenanceServer } from "./maintenance/maintenance-server.js";
 
 async function startServers() {
     await setHostMeta();
@@ -54,8 +53,6 @@ async function startServers() {
     if (config.getRawConfig().flags?.enable_integration_api) {
         integrationServer = createIntegrationApiServer();
     }
-
-     startMaintenanceServer();
 
     await initCleanup();
 
