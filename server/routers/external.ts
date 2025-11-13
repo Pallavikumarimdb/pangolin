@@ -47,7 +47,6 @@ import createHttpError from "http-errors";
 import { build } from "@server/build";
 import { createStore } from "#dynamic/lib/rateLimitStore";
 import { logActionAudit } from "#dynamic/middlewares";
-import { log } from "console";
 
 // Root routes
 export const unauthenticated = Router();
@@ -55,8 +54,6 @@ export const unauthenticated = Router();
 unauthenticated.get("/", (_, res) => {
     res.status(HttpCode.OK).json({ message: "Healthy" });
 });
-
-unauthenticated.get("/maintenance/info", resource.getMaintenanceInfo);
 
 // Authenticated Root routes
 export const authenticated = Router();
